@@ -33,7 +33,7 @@ func Resource() *schema.Resource {
 					cmd.Stdin = bytes.NewReader(clusterConfig)
 
 					if err := resource.Update(cmd, d); err != nil {
-						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", clusterConfig)
+						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", string(clusterConfig))
 					}
 
 					return nil
@@ -49,7 +49,7 @@ func Resource() *schema.Resource {
 					cmd.Stdin = bytes.NewReader(clusterConfig)
 
 					if err := resource.Update(cmd, d); err != nil {
-						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", clusterConfig)
+						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", string(clusterConfig))
 					}
 
 					return nil
