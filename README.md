@@ -25,7 +25,7 @@ There is nothing to configure for the provider, so you firstly declare the provi
 provider "eksctl" {}
 ```
 
-You use `eksctl_clsuter` resource to CRUD your cluster from Terraform.
+You use `eksctl_cluster` resource to CRUD your cluster from Terraform.
 
 It's almost like writing and embedding eksctl "cluster.yaml" into `spec` attribuet of the Terraform resource definition block, except that some attributes like cluster `name` and `region` has dedicated HCL attributes: 
 
