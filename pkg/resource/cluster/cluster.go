@@ -12,6 +12,9 @@ const KeyName = "name"
 const KeyRegion = "region"
 const KeySpec = "spec"
 const KeyBin = "eksctl_bin"
+const KeyCheckPodsReadiness = "check_pods_readiness"
+const KeyLoadBalancerAttachment = "lb_attachment"
+const KeyVPCID = "vpc_id"
 
 func Resource() *schema.Resource {
 	return &schema.Resource{
@@ -111,6 +114,85 @@ func Resource() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "eksctl",
+			},
+			// The provider runs the following command to ensure that the required pods are up and ready before
+			// completing `terraform apply`.
+			//
+			//   kubectl wait --namespace=${namespace} --for=condition=ready pod
+			//     --timeout=${timeout_sec}s -l ${selector generated from labels}`
+			KeyCheckPodsReadiness: {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"namespace": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"labels": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"timeout_sec": {
+							Type:     schema.TypeInt,
+							Optional: true,
+							Default:  300,
+						},
+					},
+				},
+			},
+			KeyVPCID: {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			KeyLoadBalancerAttachment: {
+				Type:        schema.TypeList,
+				Description: "vpc_id is also required in order to use this configuration",
+				Optional:    true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"arn": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"protocol": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"port": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+						"analysis": {
+							Type: schema.TypeList,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									// The provider waits until healthy target counts becomes greater than 0 and then
+									// queries ELB metrics to determine to ensure that
+									// - The targetgroup's 5xx count in the interval is LESS THAN max_5xx_count
+									// - The targetgroup's 5xx count in the interval is GREATER THAN min_2xx_count
+									"interval_sec": {
+										Type:     schema.TypeInt,
+										Optional: true,
+										// ELB emits metrics every 60 sec
+										// https://docs.aws.amazon.com/ja_jp/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html
+										Default: 60,
+									},
+									"max_5xx_count": {
+										Type:     schema.TypeInt,
+										Optional: true,
+									},
+									"min_2xx_count": {
+										Type:     schema.TypeInt,
+										Optional: true,
+									},
+								},
+							},
+							Optional: true,
+						},
+					},
+				},
 			},
 			resource.KeyOutput: {
 				Type:     schema.TypeString,
