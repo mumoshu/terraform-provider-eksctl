@@ -12,10 +12,17 @@ const KeyName = "name"
 const KeyRegion = "region"
 const KeySpec = "spec"
 const KeyBin = "eksctl_bin"
+const KeyKubectlBin = "kubectl_bin"
 const KeyCheckPodsReadiness = "check_pods_readiness"
 const KeyLoadBalancerAttachment = "lb_attachment"
 const KeyVPCID = "vpc_id"
 const KeyManifests = "manifests"
+
+type CheckPodsReadiness struct {
+	namespace  string
+	labels     map[string]string
+	timeoutSec int
+}
 
 func Resource() *schema.Resource {
 	return &schema.Resource{
@@ -26,7 +33,26 @@ func Resource() *schema.Resource {
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
-			return resource.Create(cmd, d)
+			if err := resource.Create(cmd, d); err != nil {
+				return err
+			}
+
+			for _, r := range cluster.CheckPodsReadinessConfigs {
+				args := []string{"wait", "--namespace", r.namespace, "--for", "condition=ready", "pod",
+					"--timeout", fmt.Sprintf("%ds", r.timeoutSec),
+				}
+
+				var selectorArgs []string
+
+				args = append(args, selectorArgs...)
+
+				kubectlCmd := exec.Command(cluster.KubectlBin, args...)
+				if _, err := resource.Run(kubectlCmd); err != nil {
+					return err
+				}
+			}
+
+			return nil
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
 			cluster, clusterConfig := PrepareClusterConfig(d)
@@ -144,6 +170,11 @@ func Resource() *schema.Resource {
 				Optional: true,
 				Default:  "eksctl",
 			},
+			KeyKubectlBin: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "kubectl",
+			},
 			// The provider runs the following command to ensure that the required pods are up and ready before
 			// completing `terraform apply`.
 			//
@@ -227,7 +258,7 @@ func Resource() *schema.Resource {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Schema{
-					Type:     schema.TypeString,
+					Type: schema.TypeString,
 				},
 			},
 			resource.KeyOutput: {
@@ -239,11 +270,14 @@ func Resource() *schema.Resource {
 }
 
 type Cluster struct {
-	EksctlBin string
-	Name      string
-	Region    string
-	Spec      string
-	Output    string
+	EksctlBin  string
+	KubectlBin string
+	Name       string
+	Region     string
+	Spec       string
+	Output     string
+
+	CheckPodsReadinessConfigs []CheckPodsReadiness
 }
 
 func PrepareClusterConfig(d *schema.ResourceData) (*Cluster, []byte) {
@@ -266,8 +300,30 @@ metadata:
 func ReadCluster(d *schema.ResourceData) *Cluster {
 	a := Cluster{}
 	a.EksctlBin = d.Get(KeyBin).(string)
+	a.KubectlBin = d.Get(KeyKubectlBin).(string)
 	a.Name = d.Get(KeyName).(string)
 	a.Region = d.Get(KeyRegion).(string)
 	a.Spec = d.Get(KeySpec).(string)
+
+	rawCheckPodsReadiness := d.Get(KeyCheckPodsReadiness).([]interface{})
+	for _, r := range rawCheckPodsReadiness {
+		m := r.(map[string]interface{})
+
+		labels := map[string]string{}
+
+		rawLabels := m["labels"].(map[string]interface{})
+		for k, v := range rawLabels {
+			labels[k] = v.(string)
+		}
+
+		ccc := CheckPodsReadiness{
+			namespace:  m["namespace"].(string),
+			labels:     labels,
+			timeoutSec: m["timeout_sec"].(int),
+		}
+
+		a.CheckPodsReadinessConfigs = append(a.CheckPodsReadinessConfigs, ccc)
+	}
+
 	return &a
 }
