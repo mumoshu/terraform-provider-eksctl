@@ -61,6 +61,19 @@ func Resource() *schema.Resource {
 				}
 			}
 
+			associateIAMOIDCProvider := func() func() error {
+				return func() error {
+					cmd := exec.Command(cluster.EksctlBin, "utils", "associate-iam-oidc-provider", "-f", "-", "--approve")
+					cmd.Stdin = bytes.NewReader(clusterConfig)
+
+					if err := resource.Update(cmd, d); err != nil {
+						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
+					}
+
+					return nil
+				}
+			}
+
 			enableRepo := func() func() error {
 				return func() error {
 					cmd := exec.Command(cluster.EksctlBin, "enable", "repo", "-f", "-")
@@ -76,6 +89,7 @@ func Resource() *schema.Resource {
 
 			tasks := []func() error{
 				createNew("nodegroup"),
+				associateIAMOIDCProvider(),
 				createNew("iamserviceaccount"),
 				createNew("fargateprofile"),
 				enableRepo(),
