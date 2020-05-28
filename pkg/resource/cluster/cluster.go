@@ -15,6 +15,7 @@ const KeyBin = "eksctl_bin"
 const KeyCheckPodsReadiness = "check_pods_readiness"
 const KeyLoadBalancerAttachment = "lb_attachment"
 const KeyVPCID = "vpc_id"
+const KeyManifests = "manifests"
 
 func Resource() *schema.Resource {
 	return &schema.Resource{
@@ -206,6 +207,13 @@ func Resource() *schema.Resource {
 							Optional: true,
 						},
 					},
+				},
+			},
+			KeyManifests: {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type:     schema.TypeString,
 				},
 			},
 			resource.KeyOutput: {
