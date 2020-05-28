@@ -60,10 +60,24 @@ func Resource() *schema.Resource {
 				}
 			}
 
+			enableRepo := func() func() error {
+				return func() error {
+					cmd := exec.Command(cluster.EksctlBin, "enable", "repo", "-f", "-")
+					cmd.Stdin = bytes.NewReader(clusterConfig)
+
+					if err := resource.Update(cmd, d); err != nil {
+						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
+					}
+
+					return nil
+				}
+			}
+
 			tasks := []func() error{
 				createNew("nodegroup"),
 				createNew("iamserviceaccount"),
 				createNew("fargateprofile"),
+				enableRepo(),
 				deleteMissing("nodegroup", "--drain"),
 				deleteMissing("iamserviceaccount"),
 				deleteMissing("fargateprofile"),
