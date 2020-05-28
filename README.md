@@ -56,6 +56,7 @@ That would require a few additional features to this provider, including:
 - Ability to attach `eks_cluster` into either ALB or NLB
 - Analyze ELB metrics (like 2xx and 5xx count per targetgrous) so that we can postpone `terraform apply` before trying to roll out a broken cluster
 - Analyze important pods readiness before rolling out a cluster
+- Analyze Datadog metrics (like request success/error rate, background job sucess/error rate, etc.) before rolling out a new cluster.
 - Specify default K8s resource manifests to be applied on the cluster
   - [The new kubernetes provider](https://www.hashicorp.com/blog/deploy-any-resource-with-the-new-kubernetes-provider-for-hashicorp-terraform/) doesn't help it. What we need is ability to apply manifests after the cluster creation but before completing update on the `eks_cluster` resource. With the kubernetes provider, the manifests are applied AFTER the `eksctl_cluster` update is done, which isn't what we want.
 
