@@ -47,6 +47,18 @@ On `terraform destroy`, the provider runs `eksctl delete`
 
 The computed field `output` is used to surface the output from `eksctl`. You can use in the string interpolation to produce a useful Terraform output.
 
+## The Goal
+
+My goal for this project is to allow automated canary deployment of a whole K8s cluster via single `terraform apply` run.
+
+That would require a few additional features to this provider, including:
+
+- Ability to attach `eks_cluster` into either ALB or NLB
+- Analyze ELB metrics (like 2xx and 5xx count per targetgrous) so that we can postpone `terraform apply` before trying to roll out a broken cluster
+- Analyze important pods readiness before rolling out a cluster
+
+[The API is mostly there](https://github.com/mumoshu/terraform-provider-eksctl/blob/master/pkg/resource/cluster/cluster.go#L132-L210), but the implementation of the functionality is still TODO.
+
 ## Developing
 
 If you wish to build this yourself, follow the instructions:
