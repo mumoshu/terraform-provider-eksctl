@@ -45,7 +45,7 @@ On `terraform apply`, the provider runs `eksctl create`, `eksctl update` and `ek
 
 On `terraform destroy`, the provider runs `eksctl delete`
 
-The computed field `output` is used to surface the output from Helmfile. You can use in the string interpolation to produce a useful Terraform output.
+The computed field `output` is used to surface the output from `eksctl`. You can use in the string interpolation to produce a useful Terraform output.
 
 ## Developing
 
