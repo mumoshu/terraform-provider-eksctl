@@ -13,7 +13,7 @@ const KeyRegion = "region"
 const KeySpec = "spec"
 const KeyBin = "eksctl_bin"
 const KeyKubectlBin = "kubectl_bin"
-const KeyCheckPodsReadiness = "check_pods_readiness"
+const KeyPodsReadinessCheck = "pods_readiness_check"
 const KeyLoadBalancerAttachment = "lb_attachment"
 const KeyVPCID = "vpc_id"
 const KeyManifests = "manifests"
@@ -22,6 +22,25 @@ type CheckPodsReadiness struct {
 	namespace  string
 	labels     map[string]string
 	timeoutSec int
+}
+
+func doCheckPodsReadiness(cluster *Cluster) error {
+	for _, r := range cluster.CheckPodsReadinessConfigs {
+		args := []string{"wait", "--namespace", r.namespace, "--for", "condition=ready", "pod",
+			"--timeout", fmt.Sprintf("%ds", r.timeoutSec),
+		}
+
+		var selectorArgs []string
+
+		args = append(args, selectorArgs...)
+
+		kubectlCmd := exec.Command(cluster.KubectlBin, args...)
+		if _, err := resource.Run(kubectlCmd); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func Resource() *schema.Resource {
@@ -37,19 +56,8 @@ func Resource() *schema.Resource {
 				return err
 			}
 
-			for _, r := range cluster.CheckPodsReadinessConfigs {
-				args := []string{"wait", "--namespace", r.namespace, "--for", "condition=ready", "pod",
-					"--timeout", fmt.Sprintf("%ds", r.timeoutSec),
-				}
-
-				var selectorArgs []string
-
-				args = append(args, selectorArgs...)
-
-				kubectlCmd := exec.Command(cluster.KubectlBin, args...)
-				if _, err := resource.Run(kubectlCmd); err != nil {
-					return err
-				}
+			if err := doCheckPodsReadiness(cluster); err != nil {
+				return err
 			}
 
 			return nil
@@ -113,6 +121,12 @@ func Resource() *schema.Resource {
 				}
 			}
 
+			checkPodsReadiness := func() func() error {
+				return func() error {
+					return doCheckPodsReadiness(cluster)
+				}
+			}
+
 			tasks := []func() error{
 				createNew("nodegroup"),
 				associateIAMOIDCProvider(),
@@ -122,6 +136,7 @@ func Resource() *schema.Resource {
 				deleteMissing("nodegroup", "--drain"),
 				deleteMissing("iamserviceaccount"),
 				deleteMissing("fargateprofile"),
+				checkPodsReadiness(),
 			}
 
 			for _, t := range tasks {
@@ -181,9 +196,10 @@ func Resource() *schema.Resource {
 			//
 			//   kubectl wait --namespace=${namespace} --for=condition=ready pod
 			//     --timeout=${timeout_sec}s -l ${selector generated from labels}`
-			KeyCheckPodsReadiness: {
-				Type:     schema.TypeList,
-				Optional: true,
+			KeyPodsReadinessCheck: {
+				Type:       schema.TypeList,
+				Optional:   true,
+				ConfigMode: schema.SchemaConfigModeBlock,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"namespace": {
@@ -306,7 +322,7 @@ func ReadCluster(d *schema.ResourceData) *Cluster {
 	a.Region = d.Get(KeyRegion).(string)
 	a.Spec = d.Get(KeySpec).(string)
 
-	rawCheckPodsReadiness := d.Get(KeyCheckPodsReadiness).([]interface{})
+	rawCheckPodsReadiness := d.Get(KeyPodsReadinessCheck).([]interface{})
 	for _, r := range rawCheckPodsReadiness {
 		m := r.(map[string]interface{})
 
