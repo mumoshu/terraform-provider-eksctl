@@ -139,6 +139,7 @@ func Resource() *schema.Resource {
 				"delete",
 				"cluster",
 				"-f", "-",
+				"--wait",
 			}
 
 			cmd := exec.Command(cluster.EksctlBin, args...)
