@@ -35,7 +35,7 @@ type CheckPodsReadiness struct {
 	timeoutSec int
 }
 
-func doCheckPodsReadiness(cluster *Cluster) error {
+func doCheckPodsReadiness(cluster *Cluster, id string) error {
 	kubeconfig, err := ioutil.TempFile("", "terraform-provider-eksctl-kubeconfig-")
 	if err != nil {
 		return err
@@ -47,7 +47,9 @@ func doCheckPodsReadiness(cluster *Cluster) error {
 		return err
 	}
 
-	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", cluster.Name, "--region", cluster.Region)
+	clusterName := cluster.Name + "-" + id
+
+	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
 	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
 		return err
 	}
@@ -86,7 +88,7 @@ func doCheckPodsReadiness(cluster *Cluster) error {
 	return nil
 }
 
-func doApplyKubernetesManifests(cluster *Cluster) error {
+func doApplyKubernetesManifests(cluster *Cluster, id string) error {
 	kubeconfig, err := ioutil.TempFile("", "terraform-provider-eksctl-kubeconfig-")
 	if err != nil {
 		return err
@@ -98,7 +100,9 @@ func doApplyKubernetesManifests(cluster *Cluster) error {
 		return err
 	}
 
-	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", cluster.Name, "--region", cluster.Region)
+	clusterName := cluster.Name + "-" + id
+
+	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
 	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
 		return err
 	}
