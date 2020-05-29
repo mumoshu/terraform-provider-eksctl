@@ -227,7 +227,7 @@ func Resource() *schema.Resource {
 						},
 						"labels": {
 							Type:     schema.TypeMap,
-							Optional: true,
+							Required: true,
 							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 						"timeout_sec": {
