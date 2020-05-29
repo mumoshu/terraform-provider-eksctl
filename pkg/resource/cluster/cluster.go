@@ -7,6 +7,7 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"io/ioutil"
 	"os/exec"
+	"strings"
 )
 
 const KeyName = "name"
@@ -62,6 +63,36 @@ func doCheckPodsReadiness(cluster *Cluster) error {
 	return nil
 }
 
+func doApplyKubernetesManifests(cluster *Cluster) error {
+	kubeconfig, err := ioutil.TempFile("", "terraform-provider-eksctl-kubeconfig-")
+	if err != nil {
+		return err
+	}
+
+	kubeconfigPath := kubeconfig.Name()
+
+	if err := kubeconfig.Close(); err != nil {
+		return err
+	}
+
+	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", cluster.Name, "--region", cluster.Region)
+	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
+		return err
+	}
+
+	all := strings.Join(cluster.Manifests, "\n---\n")
+
+	kubectlCmd := exec.Command(cluster.KubectlBin, "apply", "-f", "-")
+	kubectlCmd.Env = append(kubectlCmd.Env, "KUBECONFIG="+kubeconfigPath)
+	kubectlCmd.Stdin = bytes.NewBufferString(all)
+
+	if _, err := resource.Run(kubectlCmd); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func Resource() *schema.Resource {
 	return &schema.Resource{
 		Create: func(d *schema.ResourceData, meta interface{}) error {
@@ -72,6 +103,10 @@ func Resource() *schema.Resource {
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
 			if err := resource.Create(cmd, d); err != nil {
+				return err
+			}
+
+			if err := doApplyKubernetesManifests(cluster); err != nil {
 				return err
 			}
 
@@ -127,6 +162,12 @@ func Resource() *schema.Resource {
 				}
 			}
 
+			applyKubernetesManifests := func() func() error {
+				return func() error {
+					return doApplyKubernetesManifests(cluster)
+				}
+			}
+
 			enableRepo := func() func() error {
 				return func() error {
 					cmd := exec.Command(cluster.EksctlBin, "enable", "repo", "-f", "-")
@@ -155,6 +196,7 @@ func Resource() *schema.Resource {
 				deleteMissing("nodegroup", "--drain"),
 				deleteMissing("iamserviceaccount"),
 				deleteMissing("fargateprofile"),
+				applyKubernetesManifests(),
 				checkPodsReadiness(),
 			}
 
@@ -312,6 +354,7 @@ type Cluster struct {
 	Region     string
 	Spec       string
 	Output     string
+	Manifests  []string
 
 	CheckPodsReadinessConfigs []CheckPodsReadiness
 }
@@ -359,6 +402,11 @@ func ReadCluster(d *schema.ResourceData) *Cluster {
 		}
 
 		a.CheckPodsReadinessConfigs = append(a.CheckPodsReadinessConfigs, ccc)
+	}
+
+	rawManifests := d.Get(KeyManifests).([]interface{})
+	for _, m := range rawManifests {
+		a.Manifests = append(a.Manifests, m.(string))
 	}
 
 	return &a
