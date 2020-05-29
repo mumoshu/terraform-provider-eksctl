@@ -9,6 +9,7 @@ import (
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -131,6 +132,8 @@ func doApplyKubernetesManifests(cluster *Cluster, id string) error {
 func createCluster(d *schema.ResourceData) (string, error) {
 	id := newClusterID()
 
+	log.Printf("[DEBUG] creating eksctl cluster with id %q", id)
+
 	cluster, clusterConfig := PrepareClusterConfig(d, id)
 
 	cmd := exec.Command(cluster.EksctlBin, "create", "cluster", "-f", "-")
@@ -153,6 +156,8 @@ func createCluster(d *schema.ResourceData) (string, error) {
 }
 
 func updateCluster(d *schema.ResourceData) error {
+	log.Printf("[DEBUG] updating eksctl cluster with id %q", d.Id())
+
 	cluster, clusterConfig := PrepareClusterConfig(d)
 
 	createNew := func(kind string) func() error {
@@ -248,6 +253,8 @@ func updateCluster(d *schema.ResourceData) error {
 }
 
 func deleteCluster(d *schema.ResourceData) error {
+	log.Printf("[DEBUG] deleting eksctl cluster with id %q", d.Id())
+
 	cluster, clusterConfig := PrepareClusterConfig(d)
 
 	args := []string{
@@ -269,13 +276,18 @@ func deleteCluster(d *schema.ResourceData) error {
 }
 
 func getClusterKubernetesVersion(d *schema.ResourceData) (string, error) {
+	log.Printf("[DEBUG] getting eksctl cluster k8s version with id %q", d.Id())
+
 	cluster, clusterConfig := PrepareClusterConfig(d)
 
+	clusterName := cluster.Name + "-" + d.Id()
+
 	args := []string{
-		"delete",
+		"get",
 		"cluster",
-		"-f", "-",
-		"--wait",
+		"--name", clusterName,
+		"--region", cluster.Region,
+		"-o", "json",
 	}
 
 	cmd := exec.Command(cluster.EksctlBin, args...)
