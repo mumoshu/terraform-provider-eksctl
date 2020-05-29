@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
@@ -136,11 +137,11 @@ func createCluster(d *schema.ResourceData) (string, error) {
 		return "", err
 	}
 
-	if err := doApplyKubernetesManifests(cluster); err != nil {
+	if err := doApplyKubernetesManifests(cluster, id); err != nil {
 		return "", err
 	}
 
-	if err := doCheckPodsReadiness(cluster); err != nil {
+	if err := doCheckPodsReadiness(cluster, id); err != nil {
 		return "", err
 	}
 
@@ -193,9 +194,9 @@ func updateCluster(d *schema.ResourceData) error {
 		}
 	}
 
-	applyKubernetesManifests := func() func() error {
+	applyKubernetesManifests := func(id string) func() error {
 		return func() error {
-			return doApplyKubernetesManifests(cluster)
+			return doApplyKubernetesManifests(cluster, id)
 		}
 	}
 
@@ -212,11 +213,13 @@ func updateCluster(d *schema.ResourceData) error {
 		}
 	}
 
-	checkPodsReadiness := func() func() error {
+	checkPodsReadiness := func(id string) func() error {
 		return func() error {
-			return doCheckPodsReadiness(cluster)
+			return doCheckPodsReadiness(cluster, id)
 		}
 	}
+
+	id := d.Id()
 
 	tasks := []func() error{
 		createNew("nodegroup"),
@@ -227,8 +230,8 @@ func updateCluster(d *schema.ResourceData) error {
 		deleteMissing("nodegroup", "--drain"),
 		deleteMissing("iamserviceaccount"),
 		deleteMissing("fargateprofile"),
-		applyKubernetesManifests(),
-		checkPodsReadiness(),
+		applyKubernetesManifests(id),
+		checkPodsReadiness(id),
 	}
 
 	for _, t := range tasks {
@@ -261,6 +264,42 @@ func deleteCluster(d *schema.ResourceData) error {
 	return nil
 }
 
+func getClusterKubernetesVersion(d *schema.ResourceData) (string, error) {
+	cluster, clusterConfig := PrepareClusterConfig(d)
+
+	args := []string{
+		"delete",
+		"cluster",
+		"-f", "-",
+		"--wait",
+	}
+
+	cmd := exec.Command(cluster.EksctlBin, args...)
+
+	cmd.Stdin = bytes.NewReader(clusterConfig)
+
+	res, err := resource.Run(cmd)
+	if err != nil {
+		return "", err
+	}
+
+	type ClusterData struct {
+		Version string `json:"Version"`
+	}
+
+	var data []ClusterData
+
+	if err := json.Unmarshal([]byte(res.Output), &data); err != nil {
+		return "", err
+	}
+
+	if len(data) != 1 {
+		return "", fmt.Errorf("BUG: expected number of clusters found by running eksctl get cluster: %d\n\n%v", len(data), data)
+	}
+
+	return data[0].Version, nil
+}
+
 func Resource() *schema.Resource {
 	return &schema.Resource{
 		Create: func(d *schema.ResourceData, meta interface{}) error {
@@ -274,6 +313,66 @@ func Resource() *schema.Resource {
 			return nil
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
+			// TODO shift back 100% traffic to the current cluster before update so that you can use `terraform apply` to
+			// cancel previous canary deployment that hang in the middle of the process.
+
+			currentVer, err := getClusterKubernetesVersion(d)
+			if err != nil {
+				return err
+			}
+
+			desiredVer := d.Get(KeyVersion).(string)
+
+			if currentVer != desiredVer {
+				newID, err := createCluster(d)
+				if err != nil {
+					return err
+				}
+
+				newTGs, err := getTGs(d, newID)
+				if err != nil {
+					return err
+				}
+
+				curTGs, err := getTGs(d)
+				if err != nil {
+					return err
+				}
+
+				albs, err := getALBs(d)
+				if err != nil {
+					return err
+				}
+
+				for key, alb := range albs {
+					newTG := newTGs[key]
+					curTG := curTGs[key]
+					if newTG != nil {
+						if curTG != nil {
+							if err := shiftTraffic(alb, newTG, curTG); err != nil {
+								return err
+							}
+						} else {
+							if err := attachTG(alb, newTG); err != nil {
+								return err
+							}
+						}
+					}
+				}
+
+				// TODO Do canary deployment
+
+				if err := deleteCluster(d); err != nil {
+					return err
+				}
+
+				// TODO If requested, delete remaining stray clusters that didn't complete previous canary deployments
+
+				d.SetId(newID)
+
+				return nil
+			}
+
 			if err := updateCluster(d); err != nil {
 				return err
 			}
