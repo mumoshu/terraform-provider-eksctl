@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -14,6 +16,7 @@ import (
 const KeyName = "name"
 const KeyRegion = "region"
 const KeyAPIVersion = "api_version"
+const KeyVersion = "version"
 const KeySpec = "spec"
 const KeyBin = "eksctl_bin"
 const KeyKubectlBin = "kubectl_bin"
@@ -21,6 +24,9 @@ const KeyPodsReadinessCheck = "pods_readiness_check"
 const KeyLoadBalancerAttachment = "lb_attachment"
 const KeyVPCID = "vpc_id"
 const KeyManifests = "manifests"
+
+const DefaultAPIVersion = "eksctl.io/v1alpha5"
+const DefaultVersion = "1.16"
 
 type CheckPodsReadiness struct {
 	namespace  string
@@ -50,11 +56,25 @@ func doCheckPodsReadiness(cluster *Cluster) error {
 			"--timeout", fmt.Sprintf("%ds", r.timeoutSec),
 		}
 
+		var matches []string
+		for k, v := range r.labels {
+			matches = append(matches, k+"="+v)
+		}
+
+		args = append(args, "-l", strings.Join(matches, ","))
+
 		var selectorArgs []string
 
 		args = append(args, selectorArgs...)
 
 		kubectlCmd := exec.Command(cluster.KubectlBin, args...)
+
+		for _, env := range os.Environ() {
+			if !strings.HasPrefix(env, "KUBECONFIG=") {
+				kubectlCmd.Env = append(kubectlCmd.Env, env)
+			}
+		}
+
 		kubectlCmd.Env = append(kubectlCmd.Env, "KUBECONFIG="+kubeconfigPath)
 
 		if _, err := resource.Run(kubectlCmd); err != nil {
@@ -85,7 +105,15 @@ func doApplyKubernetesManifests(cluster *Cluster) error {
 	all := strings.Join(cluster.Manifests, "\n---\n")
 
 	kubectlCmd := exec.Command(cluster.KubectlBin, "apply", "-f", "-")
+
+	for _, env := range os.Environ() {
+		if !strings.HasPrefix(env, "KUBECONFIG=") {
+			kubectlCmd.Env = append(kubectlCmd.Env, env)
+		}
+	}
+
 	kubectlCmd.Env = append(kubectlCmd.Env, "KUBECONFIG="+kubeconfigPath)
+
 	kubectlCmd.Stdin = bytes.NewBufferString(all)
 
 	if _, err := resource.Run(kubectlCmd); err != nil {
@@ -95,136 +123,171 @@ func doApplyKubernetesManifests(cluster *Cluster) error {
 	return nil
 }
 
-func Resource() *schema.Resource {
-	return &schema.Resource{
-		Create: func(d *schema.ResourceData, meta interface{}) error {
-			cluster, clusterConfig := PrepareClusterConfig(d)
+func createCluster(d *schema.ResourceData) (string, error) {
+	id := newClusterID()
 
-			cmd := exec.Command(cluster.EksctlBin, "create", "cluster", "-f", "-")
+	cluster, clusterConfig := PrepareClusterConfig(d, id)
+
+	cmd := exec.Command(cluster.EksctlBin, "create", "cluster", "-f", "-")
+
+	cmd.Stdin = bytes.NewReader(clusterConfig)
+
+	if err := resource.Create(cmd, d, id); err != nil {
+		return "", err
+	}
+
+	if err := doApplyKubernetesManifests(cluster); err != nil {
+		return "", err
+	}
+
+	if err := doCheckPodsReadiness(cluster); err != nil {
+		return "", err
+	}
+
+	return id, nil
+}
+
+func updateCluster(d *schema.ResourceData) error {
+	cluster, clusterConfig := PrepareClusterConfig(d)
+
+	createNew := func(kind string) func() error {
+		return func() error {
+			cmd := exec.Command(cluster.EksctlBin, "create", kind, "-f", "-")
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
-			if err := resource.Create(cmd, d); err != nil {
-				return err
-			}
-
-			if err := doApplyKubernetesManifests(cluster); err != nil {
-				return err
-			}
-
-			if err := doCheckPodsReadiness(cluster); err != nil {
-				return err
+			if err := resource.Update(cmd, d); err != nil {
+				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
 			}
 
 			return nil
-		},
-		Update: func(d *schema.ResourceData, meta interface{}) error {
-			cluster, clusterConfig := PrepareClusterConfig(d)
+		}
+	}
 
-			createNew := func(kind string) func() error {
-				return func() error {
-					cmd := exec.Command(cluster.EksctlBin, "create", kind, "-f", "-")
-
-					cmd.Stdin = bytes.NewReader(clusterConfig)
-
-					if err := resource.Update(cmd, d); err != nil {
-						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
-					}
-
-					return nil
-				}
-			}
-
-			deleteMissing := func(kind string, extraArgs ...string) func() error {
-				return func() error {
-					args := append([]string{"delete", kind, "-f", "-", "--only-missing"}, extraArgs...)
-
-					cmd := exec.Command(cluster.EksctlBin, args...)
-
-					cmd.Stdin = bytes.NewReader(clusterConfig)
-
-					if err := resource.Update(cmd, d); err != nil {
-						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
-					}
-
-					return nil
-				}
-			}
-
-			associateIAMOIDCProvider := func() func() error {
-				return func() error {
-					cmd := exec.Command(cluster.EksctlBin, "utils", "associate-iam-oidc-provider", "-f", "-", "--approve")
-					cmd.Stdin = bytes.NewReader(clusterConfig)
-
-					if err := resource.Update(cmd, d); err != nil {
-						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
-					}
-
-					return nil
-				}
-			}
-
-			applyKubernetesManifests := func() func() error {
-				return func() error {
-					return doApplyKubernetesManifests(cluster)
-				}
-			}
-
-			enableRepo := func() func() error {
-				return func() error {
-					cmd := exec.Command(cluster.EksctlBin, "enable", "repo", "-f", "-")
-					cmd.Stdin = bytes.NewReader(clusterConfig)
-
-					if err := resource.Update(cmd, d); err != nil {
-						return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
-					}
-
-					return nil
-				}
-			}
-
-			checkPodsReadiness := func() func() error {
-				return func() error {
-					return doCheckPodsReadiness(cluster)
-				}
-			}
-
-			tasks := []func() error{
-				createNew("nodegroup"),
-				associateIAMOIDCProvider(),
-				createNew("iamserviceaccount"),
-				createNew("fargateprofile"),
-				enableRepo(),
-				deleteMissing("nodegroup", "--drain"),
-				deleteMissing("iamserviceaccount"),
-				deleteMissing("fargateprofile"),
-				applyKubernetesManifests(),
-				checkPodsReadiness(),
-			}
-
-			for _, t := range tasks {
-				if err := t(); err != nil {
-					return err
-				}
-			}
-
-			return nil
-		},
-		Delete: func(d *schema.ResourceData, meta interface{}) error {
-			cluster, clusterConfig := PrepareClusterConfig(d)
-
-			args := []string{
-				"delete",
-				"cluster",
-				"-f", "-",
-				"--wait",
-			}
+	deleteMissing := func(kind string, extraArgs ...string) func() error {
+		return func() error {
+			args := append([]string{"delete", kind, "-f", "-", "--only-missing"}, extraArgs...)
 
 			cmd := exec.Command(cluster.EksctlBin, args...)
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
-			return resource.Delete(cmd, d)
+			if err := resource.Update(cmd, d); err != nil {
+				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
+			}
+
+			return nil
+		}
+	}
+
+	associateIAMOIDCProvider := func() func() error {
+		return func() error {
+			cmd := exec.Command(cluster.EksctlBin, "utils", "associate-iam-oidc-provider", "-f", "-", "--approve")
+			cmd.Stdin = bytes.NewReader(clusterConfig)
+
+			if err := resource.Update(cmd, d); err != nil {
+				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
+			}
+
+			return nil
+		}
+	}
+
+	applyKubernetesManifests := func() func() error {
+		return func() error {
+			return doApplyKubernetesManifests(cluster)
+		}
+	}
+
+	enableRepo := func() func() error {
+		return func() error {
+			cmd := exec.Command(cluster.EksctlBin, "enable", "repo", "-f", "-")
+			cmd.Stdin = bytes.NewReader(clusterConfig)
+
+			if err := resource.Update(cmd, d); err != nil {
+				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
+			}
+
+			return nil
+		}
+	}
+
+	checkPodsReadiness := func() func() error {
+		return func() error {
+			return doCheckPodsReadiness(cluster)
+		}
+	}
+
+	tasks := []func() error{
+		createNew("nodegroup"),
+		associateIAMOIDCProvider(),
+		createNew("iamserviceaccount"),
+		createNew("fargateprofile"),
+		enableRepo(),
+		deleteMissing("nodegroup", "--drain"),
+		deleteMissing("iamserviceaccount"),
+		deleteMissing("fargateprofile"),
+		applyKubernetesManifests(),
+		checkPodsReadiness(),
+	}
+
+	for _, t := range tasks {
+		if err := t(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func deleteCluster(d *schema.ResourceData) error {
+	cluster, clusterConfig := PrepareClusterConfig(d)
+
+	args := []string{
+		"delete",
+		"cluster",
+		"-f", "-",
+		"--wait",
+	}
+
+	cmd := exec.Command(cluster.EksctlBin, args...)
+
+	cmd.Stdin = bytes.NewReader(clusterConfig)
+
+	if err := resource.Delete(cmd, d); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func Resource() *schema.Resource {
+	return &schema.Resource{
+		Create: func(d *schema.ResourceData, meta interface{}) error {
+			id, err := createCluster(d)
+			if err != nil {
+				return err
+			}
+
+			d.SetId(id)
+
+			return nil
+		},
+		Update: func(d *schema.ResourceData, meta interface{}) error {
+			if err := updateCluster(d); err != nil {
+				return err
+			}
+
+			return nil
+		},
+		Delete: func(d *schema.ResourceData, meta interface{}) error {
+			if err := deleteCluster(d); err != nil {
+				return err
+			}
+
+			d.SetId("")
+
+			return nil
 		},
 		Read: func(d *schema.ResourceData, meta interface{}) error {
 			return nil
@@ -243,7 +306,12 @@ func Resource() *schema.Resource {
 			KeyAPIVersion: {
 				Type:     schema.TypeString,
 				Optional: true,
-				Default:  "eksctl.io/v1alpha5",
+				Default:  DefaultAPIVersion,
+			},
+			KeyVersion: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  DefaultVersion,
 			},
 			KeySpec: {
 				Type:     schema.TypeString,
@@ -354,12 +422,17 @@ func Resource() *schema.Resource {
 	}
 }
 
+func newClusterID() string {
+	return xid.New().String()
+}
+
 type Cluster struct {
 	EksctlBin  string
 	KubectlBin string
 	Name       string
 	Region     string
 	APIVersion string
+	Version    string
 	VPCID      string
 	Spec       string
 	Output     string
@@ -368,7 +441,7 @@ type Cluster struct {
 	CheckPodsReadinessConfigs []CheckPodsReadiness
 }
 
-func PrepareClusterConfig(d *schema.ResourceData) (*Cluster, []byte) {
+func PrepareClusterConfig(d *schema.ResourceData, newId ...string) (*Cluster, []byte) {
 	a := ReadCluster(d)
 
 	spec := map[string]interface{}{}
@@ -396,6 +469,20 @@ func PrepareClusterConfig(d *schema.ResourceData) (*Cluster, []byte) {
 
 	specStr := buf.String()
 
+	var id string
+
+	if len(newId) > 0 {
+		id = newId[0]
+	} else {
+		id = d.Id()
+	}
+
+	if id == "" {
+		panic("Missing Resource ID. This must be a bug!")
+	}
+
+	clusterName := fmt.Sprintf("%s-%s", a.Name, id)
+
 	clusterConfig := []byte(fmt.Sprintf(`
 apiVersion: %s
 kind: ClusterConfig
@@ -403,9 +490,10 @@ kind: ClusterConfig
 metadata:
   name: %q
   region: %q
+  version: %q
 
 %s
-`, a.APIVersion, a.Name, a.Region, specStr))
+`, a.APIVersion, clusterName, a.Region, a.Version, specStr))
 
 	return a, clusterConfig
 }
@@ -417,7 +505,19 @@ func ReadCluster(d *schema.ResourceData) *Cluster {
 	a.Name = d.Get(KeyName).(string)
 	a.Region = d.Get(KeyRegion).(string)
 	a.Spec = d.Get(KeySpec).(string)
+
 	a.APIVersion = d.Get(KeyAPIVersion).(string)
+	// For migration from older version of the provider that didn't had api_version attribute
+	if a.APIVersion == "" {
+		a.APIVersion = DefaultAPIVersion
+	}
+
+	a.Version = d.Get(KeyVersion).(string)
+	// For migration from older version of the provider that didn't had api_version attribute
+	if a.Version == "" {
+		a.Version = DefaultVersion
+	}
+
 	a.VPCID = d.Get(KeyVPCID).(string)
 
 	rawCheckPodsReadiness := d.Get(KeyPodsReadinessCheck).([]interface{})

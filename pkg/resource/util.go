@@ -8,7 +8,6 @@ import (
 	"github.com/armon/circbuf"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mitchellh/go-linereader"
-	"github.com/rs/xid"
 	"io"
 	"log"
 	"os"
@@ -17,16 +16,13 @@ import (
 	"syscall"
 )
 
-func Create(cmd *exec.Cmd, d *schema.ResourceData) error {
+func Create(cmd *exec.Cmd, d *schema.ResourceData, newID string) error {
 	d.MarkNewResource()
 
 	st, err := Run(cmd)
 	if err != nil {
 		return err
 	}
-
-	id := xid.New().String()
-	d.SetId(id)
 
 	SetOutput(d, st.Output)
 
@@ -49,8 +45,6 @@ func Delete(cmd *exec.Cmd, d *schema.ResourceData) error {
 	if err != nil {
 		return err
 	}
-
-	d.SetId("")
 
 	return nil
 }

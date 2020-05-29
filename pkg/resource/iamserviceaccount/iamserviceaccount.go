@@ -37,7 +37,7 @@ func Resource() *schema.Resource {
 				)
 			}
 
-			return resource.Create(exec.Command("eksctl", args...), d)
+			return resource.Create(exec.Command("eksctl", args...), d, "")
 		},
 		Delete: func(d *schema.ResourceData, meta interface{}) error {
 			a := ReadIAMServiceAccount(d)
