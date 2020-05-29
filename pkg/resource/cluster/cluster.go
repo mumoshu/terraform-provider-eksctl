@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os/exec"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 const KeyName = "name"
 const KeyRegion = "region"
+const KeyAPIVersion = "api_version"
 const KeySpec = "spec"
 const KeyBin = "eksctl_bin"
 const KeyKubectlBin = "kubectl_bin"
@@ -238,6 +240,11 @@ func Resource() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			KeyAPIVersion: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "eksctl.io/v1alpha5",
+			},
 			KeySpec: {
 				Type:     schema.TypeString,
 				Required: true,
@@ -352,6 +359,8 @@ type Cluster struct {
 	KubectlBin string
 	Name       string
 	Region     string
+	APIVersion string
+	VPCID      string
 	Spec       string
 	Output     string
 	Manifests  []string
@@ -362,8 +371,33 @@ type Cluster struct {
 func PrepareClusterConfig(d *schema.ResourceData) (*Cluster, []byte) {
 	a := ReadCluster(d)
 
+	spec := map[string]interface{}{}
+
+	if err := yaml.Unmarshal([]byte(a.Spec), spec); err != nil {
+		panic(err)
+	}
+
+	if a.VPCID != "" {
+		switch vpc := spec["vpc"].(type) {
+		case map[interface{}]interface{}:
+			vpc["id"] = a.VPCID
+		}
+	}
+
+	var buf bytes.Buffer
+
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+
+	err := enc.Encode(spec)
+	if err != nil {
+		panic(err)
+	}
+
+	specStr := buf.String()
+
 	clusterConfig := []byte(fmt.Sprintf(`
-apiVersion: eksctl.io/v1alpha5
+apiVersion: %s
 kind: ClusterConfig
 
 metadata:
@@ -371,7 +405,7 @@ metadata:
   region: %q
 
 %s
-`, a.Name, a.Region, a.Spec))
+`, a.APIVersion, a.Name, a.Region, specStr))
 
 	return a, clusterConfig
 }
@@ -383,6 +417,8 @@ func ReadCluster(d *schema.ResourceData) *Cluster {
 	a.Name = d.Get(KeyName).(string)
 	a.Region = d.Get(KeyRegion).(string)
 	a.Spec = d.Get(KeySpec).(string)
+	a.APIVersion = d.Get(KeyAPIVersion).(string)
+	a.VPCID = d.Get(KeyVPCID).(string)
 
 	rawCheckPodsReadiness := d.Get(KeyPodsReadinessCheck).([]interface{})
 	for _, r := range rawCheckPodsReadiness {
