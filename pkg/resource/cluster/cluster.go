@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"io/ioutil"
 	"os/exec"
 )
 
@@ -25,6 +26,22 @@ type CheckPodsReadiness struct {
 }
 
 func doCheckPodsReadiness(cluster *Cluster) error {
+	kubeconfig, err := ioutil.TempFile("", "terraform-provider-eksctl-kubeconfig-")
+	if err != nil {
+		return err
+	}
+
+	kubeconfigPath := kubeconfig.Name()
+
+	if err := kubeconfig.Close(); err != nil {
+		return err
+	}
+
+	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", cluster.Name, "--region", cluster.Region)
+	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
+		return err
+	}
+
 	for _, r := range cluster.CheckPodsReadinessConfigs {
 		args := []string{"wait", "--namespace", r.namespace, "--for", "condition=ready", "pod",
 			"--timeout", fmt.Sprintf("%ds", r.timeoutSec),
@@ -35,6 +52,8 @@ func doCheckPodsReadiness(cluster *Cluster) error {
 		args = append(args, selectorArgs...)
 
 		kubectlCmd := exec.Command(cluster.KubectlBin, args...)
+		kubectlCmd.Env = append(kubectlCmd.Env, "KUBECONFIG="+kubeconfigPath)
+
 		if _, err := resource.Run(kubectlCmd); err != nil {
 			return err
 		}
