@@ -37,6 +37,10 @@ type CheckPodsReadiness struct {
 }
 
 func doCheckPodsReadiness(cluster *Cluster, id string) error {
+	if len(cluster.CheckPodsReadinessConfigs) == 0 {
+		return nil
+	}
+
 	kubeconfig, err := ioutil.TempFile("", "terraform-provider-eksctl-kubeconfig-")
 	if err != nil {
 		return err
@@ -90,6 +94,10 @@ func doCheckPodsReadiness(cluster *Cluster, id string) error {
 }
 
 func doApplyKubernetesManifests(cluster *Cluster, id string) error {
+	if len(cluster.Manifests) == 0 {
+		return nil
+	}
+
 	kubeconfig, err := ioutil.TempFile("", "terraform-provider-eksctl-kubeconfig-")
 	if err != nil {
 		return err
