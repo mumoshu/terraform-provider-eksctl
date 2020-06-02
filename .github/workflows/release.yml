@@ -1,0 +1,46 @@
+name: 'Build Go binaries and attach to GitHub Release'
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  release:
+    name: 'Build Go binaries and attach to GitHub Release'
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repo
+      - name: 'Checkout'
+        uses: actions/checkout@v1
+
+      # Build Go binaries
+      - name: 'Build Go binaries'
+        uses: cloudposse/actions/go/build@0.7.0
+        env:
+          # Architectures to build for
+          GOX_OSARCH: >-
+            windows/386
+            windows/amd64
+            freebsd/arm
+            netbsd/386
+            netbsd/amd64
+            netbsd/arm
+            linux/s390x
+            linux/arm
+            darwin/386
+            darwin/amd64
+            linux/386
+            linux/amd64
+            freebsd/amd64
+            freebsd/386
+            openbsd/386
+            openbsd/amd64
+          OUTPUT_PATH: ${{ github.workspace }}/release/terraform-provider-eksctl_
+
+      # Attach Go binaries to GitHub Release
+      - name: 'Attach Go binaries to GitHub Release'
+        uses: cloudposse/actions/github/release-assets@0.7.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_PATH: ${{ github.workspace }}/release/terraform-provider-eksctl_*

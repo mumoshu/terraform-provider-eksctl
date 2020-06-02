@@ -1,0 +1,16 @@
+project_name: flux-repo
+builds:
+  - main: ./cmd/main
+    binary: terraform-provider-eksctl-v{{.Version}}
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/mumoshu/terraform-provider-eksctl/Version={{.Version}}
+changelog:
+  filters:
+    # commit messages matching the regexp listed here will be removed from
+    # the changelog
+    # Default is empty
+    exclude:
+      - '^docs:'
+      - typo
