@@ -47,6 +47,36 @@ On `terraform destroy`, the provider runs `eksctl delete`
 
 The computed field `output` is used to surface the output from `eksctl`. You can use in the string interpolation to produce a useful Terraform output.
 
+## Advanced Features
+
+### Delete Kubernetes resources before destroy
+
+Use `kubernetes_resource_deletion_before_destroy` blocks.
+
+It is useful for e.g.:
+
+- Stopping Flux so that it won't try to install new manifests before the cluster being down
+- Stopping pods whose IP addresses are exposed via a headless service and external-dns before the cluster being down, so that stale pod IPs won't remain in the serviced discovery system
+
+```hcl
+resource "eksctl_cluster" "primary" {
+  name = "primary"
+  region = "us-east-2"
+
+  spec = <<EOS
+  - name: ng2
+    instanceType: m5.large
+    desiredCapacity: 1
+EOS
+
+  kubernetes_resource_deletion_before_destroy {
+    namespace = "flux"
+    kind = "deployment"
+    name = "flux"
+  }
+}
+```
+
 ## The Goal
 
 My goal for this project is to allow automated canary deployment of a whole K8s cluster via single `terraform apply` run.

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
@@ -23,12 +24,15 @@ const KeySpec = "spec"
 const KeyBin = "eksctl_bin"
 const KeyKubectlBin = "kubectl_bin"
 const KeyPodsReadinessCheck = "pods_readiness_check"
+const KeyKubernetesResourceDeletionBeforeDestroy = "kubernetes_resource_deletion_before_destroy"
 const KeyLoadBalancerAttachment = "lb_attachment"
 const KeyVPCID = "vpc_id"
 const KeyManifests = "manifests"
 
 const DefaultAPIVersion = "eksctl.io/v1alpha5"
 const DefaultVersion = "1.16"
+
+var ValidDeleteK8sResourceKinds = []string{"deployment", "deploy", "pod", "service", "svc", "statefulset", "job"}
 
 type CheckPodsReadiness struct {
 	namespace  string
@@ -132,6 +136,48 @@ func doApplyKubernetesManifests(cluster *Cluster, id string) error {
 
 	if _, err := resource.Run(kubectlCmd); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func doDeleteKubernetesResourcesBeforeDestroy(cluster *Cluster, id string) error {
+	if len(cluster.DeleteKubernetesResourcesBeforeDestroy) == 0 {
+		return nil
+	}
+
+	kubeconfig, err := ioutil.TempFile("", "terraform-provider-eksctl-kubeconfig-")
+	if err != nil {
+		return err
+	}
+
+	kubeconfigPath := kubeconfig.Name()
+
+	if err := kubeconfig.Close(); err != nil {
+		return err
+	}
+
+	clusterName := cluster.Name + "-" + id
+
+	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
+	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
+		return err
+	}
+
+	for _, d := range cluster.DeleteKubernetesResourcesBeforeDestroy {
+		kubectlCmd := exec.Command(cluster.KubectlBin, "delete", "-n", d.Namespace, d.Kind, d.Name)
+
+		for _, env := range os.Environ() {
+			if !strings.HasPrefix(env, "KUBECONFIG=") {
+				kubectlCmd.Env = append(kubectlCmd.Env, env)
+			}
+		}
+
+		kubectlCmd.Env = append(kubectlCmd.Env, "KUBECONFIG="+kubeconfigPath)
+
+		if _, err := resource.Run(kubectlCmd); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -270,6 +316,10 @@ func deleteCluster(d *schema.ResourceData) error {
 		"cluster",
 		"-f", "-",
 		"--wait",
+	}
+
+	if err := doDeleteKubernetesResourcesBeforeDestroy(cluster, d.Id()); err != nil {
+		return err
 	}
 
 	cmd := exec.Command(cluster.EksctlBin, args...)
@@ -478,6 +528,28 @@ func Resource() *schema.Resource {
 					},
 				},
 			},
+			KeyKubernetesResourceDeletionBeforeDestroy: {
+				Type:       schema.TypeList,
+				Optional:   true,
+				ConfigMode: schema.SchemaConfigModeBlock,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"namespace": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"kind": {
+							Type:         schema.TypeString,
+							Required:     true,
+							ValidateFunc: validation.StringInSlice(ValidDeleteK8sResourceKinds, true),
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+			},
 			KeyVPCID: {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -562,10 +634,21 @@ type Cluster struct {
 	Manifests  []string
 
 	CheckPodsReadinessConfigs []CheckPodsReadiness
+
+	DeleteKubernetesResourcesBeforeDestroy []DeleteKubernetesResource
+}
+
+type DeleteKubernetesResource struct {
+	Namespace string
+	Name      string
+	Kind      string
 }
 
 func PrepareClusterConfig(d *schema.ResourceData, newId ...string) (*Cluster, []byte) {
-	a := ReadCluster(d)
+	a, err := ReadCluster(d)
+	if err != nil {
+		panic(err)
+	}
 
 	spec := map[string]interface{}{}
 
@@ -585,8 +668,7 @@ func PrepareClusterConfig(d *schema.ResourceData, newId ...string) (*Cluster, []
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
 
-	err := enc.Encode(spec)
-	if err != nil {
+	if err := enc.Encode(spec); err != nil {
 		panic(err)
 	}
 
@@ -621,7 +703,7 @@ metadata:
 	return a, clusterConfig
 }
 
-func ReadCluster(d *schema.ResourceData) *Cluster {
+func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 	a := Cluster{}
 	a.EksctlBin = d.Get(KeyBin).(string)
 	a.KubectlBin = d.Get(KeyKubectlBin).(string)
@@ -663,10 +745,23 @@ func ReadCluster(d *schema.ResourceData) *Cluster {
 		a.CheckPodsReadinessConfigs = append(a.CheckPodsReadinessConfigs, ccc)
 	}
 
+	resourceDeletions := d.Get(KeyKubernetesResourceDeletionBeforeDestroy).([]interface{})
+	for _, r := range resourceDeletions {
+		m := r.(map[string]interface{})
+
+		d := DeleteKubernetesResource{
+			Namespace: m["namespace"].(string),
+			Name:      m["name"].(string),
+			Kind:      m["kind"].(string),
+		}
+
+		a.DeleteKubernetesResourcesBeforeDestroy = append(a.DeleteKubernetesResourcesBeforeDestroy, d)
+	}
+
 	rawManifests := d.Get(KeyManifests).([]interface{})
 	for _, m := range rawManifests {
 		a.Manifests = append(a.Manifests, m.(string))
 	}
 
-	return &a
+	return &a, nil
 }
