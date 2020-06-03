@@ -214,13 +214,22 @@ func updateCluster(d *schema.ResourceData) error {
 
 	cluster, clusterConfig := PrepareClusterConfig(d)
 
-	createNew := func(kind string) func() error {
+	createNew := func(kind string, harmlessErrors []string) func() error {
 		return func() error {
 			cmd := exec.Command(cluster.EksctlBin, "create", kind, "-f", "-")
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
 			if err := resource.Update(cmd, d); err != nil {
+				lines := strings.Split(err.Error(), "\n")
+				lastLine := lines[len(lines)-1]
+				for _, h := range harmlessErrors {
+					if strings.HasPrefix(lastLine, h) {
+						log.Printf("Ignoring harmless error while deleting missing %s: %v", kind, lastLine)
+
+						return nil
+					}
+				}
 				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
 			}
 
@@ -228,7 +237,7 @@ func updateCluster(d *schema.ResourceData) error {
 		}
 	}
 
-	deleteMissing := func(kind string, extraArgs ...string) func() error {
+	deleteMissing := func(kind string, extraArgs []string, harmlessErrors []string) func() error {
 		return func() error {
 			args := append([]string{"delete", kind, "-f", "-", "--only-missing"}, extraArgs...)
 
@@ -237,6 +246,16 @@ func updateCluster(d *schema.ResourceData) error {
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
 			if err := resource.Update(cmd, d); err != nil {
+				lines := strings.Split(err.Error(), "\n")
+				lastLine := lines[len(lines)-1]
+				for _, h := range harmlessErrors {
+					if strings.HasPrefix(lastLine, h) {
+						log.Printf("Ignoring harmless error while deleting missing %s: %v", kind, lastLine)
+
+						return nil
+					}
+				}
+
 				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
 			}
 
@@ -284,15 +303,19 @@ func updateCluster(d *schema.ResourceData) error {
 
 	id := d.Id()
 
+	harmlessFargateProfileCreationErrors := []string{
+		fmt.Sprintf(`Error: no output "FargatePodExecutionRoleARN" in stack "eksctl-%s-%s-cluster"`, cluster.Name, id),
+	}
+
 	tasks := []func() error{
-		createNew("nodegroup"),
+		createNew("nodegroup", nil),
 		associateIAMOIDCProvider(),
-		createNew("iamserviceaccount"),
-		createNew("fargateprofile"),
+		createNew("iamserviceaccount", nil),
+		createNew("fargateprofile", harmlessFargateProfileCreationErrors),
 		enableRepo(),
-		deleteMissing("nodegroup", "--drain"),
-		deleteMissing("iamserviceaccount"),
-		deleteMissing("fargateprofile"),
+		deleteMissing("nodegroup", []string{"--drain"}, nil),
+		deleteMissing("iamserviceaccount", nil, nil),
+		deleteMissing("fargateprofile", nil, []string{"Error: invalid Fargate profile: empty name"}),
 		applyKubernetesManifests(id),
 		checkPodsReadiness(id),
 	}
