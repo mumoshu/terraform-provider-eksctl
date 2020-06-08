@@ -43,6 +43,9 @@ func deleteCluster(d *schema.ResourceData) error {
 		return err
 	}
 
+	// TODO Delete target groups
+	// TODO Delete ALB listener rule
+
 	return nil
 }
 
