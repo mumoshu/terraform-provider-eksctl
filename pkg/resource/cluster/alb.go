@@ -202,8 +202,9 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 			}
 
 			ec2svc := ec2.New(awsclicompat.NewSession(cluster.Region))
-			ec2svc.CreateTags(&ec2.CreateTagsInput{
-				Resources: nil,
+
+			if _, err := ec2svc.CreateTags(&ec2.CreateTagsInput{
+				Resources: aws.StringSlice([]string{*created.TargetGroups[0].TargetGroupArn}),
 				Tags: []*ec2.Tag{
 					{
 						Key:   aws.String("tf-eksctl/node-group"),
@@ -214,7 +215,9 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 						Value: aws.String(cluster.Name),
 					},
 				},
-			})
+			}); err != nil {
+				return nil, fmt.Errorf("creating target group tags: %w", err)
+			}
 
 			listenerStatus.DesiredTG = created.TargetGroups[0]
 		}
