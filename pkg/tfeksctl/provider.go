@@ -17,12 +17,7 @@ func Provider() terraform.ResourceProvider {
 			"eksctl_cluster":           cluster.Resource(),
 			"eksctl_iamserviceaccount": iamserviceaccount.Resource(),
 		},
-		ConfigureFunc: providerConfigure,
+		ConfigureFunc: configureProvider(),
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (interface{}, error) {
-	config := Config{}
-
-	return config.Client()
-}

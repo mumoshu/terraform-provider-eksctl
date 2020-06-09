@@ -1,4 +1,4 @@
-package cluster
+package tfeksctl
 
 import (
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -6,15 +6,15 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 )
 
-type Configuration struct {
+type ProviderConfig struct {
 	AWSSession *session.Session
 }
 
-func configureFunc() func(*schema.ResourceData) (interface{}, error) {
+func configureProvider() func(*schema.ResourceData) (interface{}, error) {
 	return func(d *schema.ResourceData) (interface{}, error) {
 		s := awsclicompat.NewSession(d.Get("region").(string))
 
-		return &Configuration{
+		return &ProviderConfig{
 			AWSSession: s,
 		}, nil
 	}
