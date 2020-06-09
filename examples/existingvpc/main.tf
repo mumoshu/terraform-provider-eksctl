@@ -8,6 +8,9 @@ variable "region" {
 provider "aws" {
   version = ">= 2.28.1"
   region  = "us-east-2"
+  ignore_tags {
+    key_prefixes = ["kubernetes.io/cluster/"]
+  }
 }
 
 data "aws_availability_zones" "available" {}
@@ -50,6 +53,17 @@ module "vpc" {
   //    "kubernetes.io/cluster/${local.cluster_name}" = "shared"
   //    "kubernetes.io/role/internal-elb"             = "1"
   //  }
+
+  // Wd wanna prevent provider-added tags to result in detected changes on plan.
+  // But terraform doesn't allow injecting `lifecycle` block into module-managed resources.
+  //
+  //lifecycle {
+  //  ignore_changes = ["tags.\"kubernetes.io/cluster/\".%"]
+  //}
+  //
+  // Instead, we use ignore_tags provided by the aws provider. See:
+  // - https://github.com/terraform-aws-modules/terraform-aws-vpc/issues/188#issuecomment-558627861
+  // - https://www.terraform.io/docs/providers/aws/#ignore_tags-configuration-block
 }
 
 locals {
