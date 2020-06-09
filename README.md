@@ -47,8 +47,17 @@ On `terraform destroy`, the provider runs `eksctl delete`
 
 The computed field `output` is used to surface the output from `eksctl`. You can use in the string interpolation to produce a useful Terraform output.
 
-## Advanced Features
+## Advanced Features and Use-cases
 
+There's a bunch more settings that helps the app to stay highly available while being recreated, including:
+
+- `kubernetes_resource_deletion_before_destroy`
+- `alb_attachment`
+- `pods_readiness_check`
+
+It's also highly recommended to include `git` configuration and use `eksctl` which includes https://github.com/weaveworks/eksctl/pull/2274 in order to install Flux in an unattended way, so that the cluster has everything deployed on launch. Otherwise blue-green deployments of the cluster doesn't make sense.
+
+Please see the [existingvpc](/examples/existingvpc) example to see how a fully configured eksctl_cluster resource should look like, and the below references for details of each setting.
 ### Delete Kubernetes resources before destroy
 
 Use `kubernetes_resource_deletion_before_destroy` blocks.
@@ -83,12 +92,15 @@ My goal for this project is to allow automated canary deployment of a whole K8s 
 
 That would require a few additional features to this provider, including:
 
-- Ability to attach `eks_cluster` into either ALB or NLB
-- Analyze ELB metrics (like 2xx and 5xx count per targetgrous) so that we can postpone `terraform apply` before trying to roll out a broken cluster
-- Analyze important pods readiness before rolling out a cluster
-- Analyze Datadog metrics (like request success/error rate, background job sucess/error rate, etc.) before rolling out a new cluster.
-- Specify default K8s resource manifests to be applied on the cluster
+- [x] Ability to attach `eks_cluster` to ALB
+- [ ] Analyze ALB metrics (like 2xx and 5xx count per targetgrous) so that we can postpone `terraform apply` before trying to roll out a broken cluster
+- [x] Analyze important pods readiness before rolling out a cluster
+  - Implemented. Use `pods_readiness_check` blocks.
+- [ ] Analyze Datadog metrics (like request success/error rate, background job sucess/error rate, etc.) before rolling out a new cluster.
+- [x] Specify default K8s resource manifests to be applied on the cluster
   - [The new kubernetes provider](https://www.hashicorp.com/blog/deploy-any-resource-with-the-new-kubernetes-provider-for-hashicorp-terraform/) doesn't help it. What we need is ability to apply manifests after the cluster creation but before completing update on the `eks_cluster` resource. With the kubernetes provider, the manifests are applied AFTER the `eksctl_cluster` update is done, which isn't what we want.
+  - Implemented. Use the `manifests` attribute.
+- [ ] Ability to attach `eks_cluster` to NLB
 
 `terraform-provider-eksctl` is my alternative to the imaginary `eksctl-controller`.
 
