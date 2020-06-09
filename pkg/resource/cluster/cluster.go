@@ -27,6 +27,10 @@ const KeyALBAttachment = "alb_attachment"
 const KeyVPCID = "vpc_id"
 const KeyManifests = "manifests"
 
+const (
+	KeyTargetGroupARNs = "target_group_arns"
+)
+
 const DefaultAPIVersion = "eksctl.io/v1alpha5"
 const DefaultVersion = "1.16"
 
@@ -110,7 +114,7 @@ func Resource() *schema.Resource {
 			return nil
 		},
 		Read: func(d *schema.ResourceData, meta interface{}) error {
-			return nil
+			return readCluster(d)
 		},
 		Schema: map[string]*schema.Schema{
 			// "ForceNew" fields
@@ -442,6 +446,14 @@ produces:
 					Type: schema.TypeString,
 				},
 			},
+			KeyTargetGroupARNs: {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 			resource.KeyOutput: {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -473,6 +485,7 @@ type Cluster struct {
 	PublicSubnetIDs  []string
 	PrivateSubnetIDs []string
 	ALBAttachments   []ALBAttachment
+	TargetGroupARNs  []string
 }
 
 type DeleteKubernetesResource struct {
@@ -760,6 +773,11 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 	rawManifests := d.Get(KeyManifests).([]interface{})
 	for _, m := range rawManifests {
 		a.Manifests = append(a.Manifests, m.(string))
+	}
+
+	tgARNs := d.Get(KeyTargetGroupARNs).([]interface{})
+	for _, arn := range tgARNs {
+		a.TargetGroupARNs = append(a.TargetGroupARNs, arn.(string))
 	}
 
 	fmt.Printf("Read Cluster:\n%+v", a)

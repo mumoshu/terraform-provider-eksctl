@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"log"
@@ -201,17 +200,15 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 				return nil, fmt.Errorf("creating target group %s for cluster %s: %w", desiredTGName, cluster.Name, err)
 			}
 
-			ec2svc := ec2.New(awsclicompat.NewSession(cluster.Region))
-
-			if _, err := ec2svc.CreateTags(&ec2.CreateTagsInput{
-				Resources: aws.StringSlice([]string{*created.TargetGroups[0].TargetGroupArn}),
-				Tags: []*ec2.Tag{
+			if _, err := svc.AddTags(&elbv2.AddTagsInput{
+				ResourceArns: aws.StringSlice([]string{*created.TargetGroups[0].TargetGroupArn}),
+				Tags: []*elbv2.Tag{
 					{
-						Key:   aws.String("tf-eksctl/node-group"),
+						Key:   aws.String(TagKeyNodeGroupName),
 						Value: aws.String(a.NodeGroupName),
 					},
 					{
-						Key:   aws.String("tf-eksctl/cluster"),
+						Key:   aws.String(TagKeyClusterNamePrefix),
 						Value: aws.String(cluster.Name),
 					},
 				},
