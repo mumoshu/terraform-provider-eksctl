@@ -125,6 +125,7 @@ func Resource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
+				DefaultFunc: schema.EnvDefaultFunc("AWS_DEFAULT_REGION", nil),
 			},
 			KeyName: {
 				Type:     schema.TypeString,
