@@ -26,6 +26,10 @@ type ListenerStatus struct {
 	RulePriority int64
 	Hosts        []string
 	PathPatterns []string
+	Methods      []string
+	SourceIPs    []string
+	Headers      map[string][]string
+	QueryStrings map[string]string
 }
 
 // the key is listener ARN
@@ -131,6 +135,10 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 		l.RulePriority = int64(l.ALBAttachments[0].Priority)
 		l.Hosts = l.ALBAttachments[0].Hosts
 		l.PathPatterns = l.ALBAttachments[0].PathPatterns
+		l.Methods = l.ALBAttachments[0].Methods
+		l.SourceIPs = l.ALBAttachments[0].SourceIPs
+		l.Headers = l.ALBAttachments[0].Headers
+		l.QueryStrings = l.ALBAttachments[0].QueryStrings
 	}
 
 	for listenerARN := range listenerStatuses {
@@ -269,6 +277,10 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 					//	}
 				}
 
+				// See this for how rule conditions should be composed:
+				// https://cloudaffaire.com/aws-application-load-balancer-listener-rules-and-advance-routing-options
+				// (I found it much readable and helpful than the official reference doc
+
 				if len(listenerStatus.Hosts) > 0 {
 					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
 						Field: aws.String("host-header"),
@@ -283,6 +295,53 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 						Field: aws.String("path-pattern"),
 						PathPatternConfig: &elbv2.PathPatternConditionConfig{
 							Values: aws.StringSlice(listenerStatus.PathPatterns),
+						},
+					})
+				}
+
+				if len(listenerStatus.Methods) > 0 {
+					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+						Field: aws.String("http-request-method"),
+						HttpRequestMethodConfig: &elbv2.HttpRequestMethodConditionConfig{
+							Values: aws.StringSlice(listenerStatus.Methods),
+						},
+					})
+				}
+
+				if len(listenerStatus.SourceIPs) > 0 {
+					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+						Field: aws.String("source-ip"),
+						SourceIpConfig: &elbv2.SourceIpConditionConfig{
+							Values: aws.StringSlice(listenerStatus.SourceIPs),
+						},
+					})
+				}
+
+				if len(listenerStatus.Headers) > 0 {
+					for name, values := range listenerStatus.Headers {
+						ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+							Field: aws.String("http-header"),
+							HttpHeaderConfig: &elbv2.HttpHeaderConditionConfig{
+								HttpHeaderName: aws.String(name),
+								Values:         aws.StringSlice(values),
+							},
+						})
+					}
+				}
+
+				if len(listenerStatus.QueryStrings) > 0 {
+					var vs []*elbv2.QueryStringKeyValuePair
+
+					for k, v := range listenerStatus.QueryStrings {
+						vs = append(vs, &elbv2.QueryStringKeyValuePair{
+							Key:   aws.String(k),
+							Value: aws.String(v),
+						})
+					}
+					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+						Field: aws.String("query-string"),
+						QueryStringConfig: &elbv2.QueryStringConditionConfig{
+							Values: vs,
 						},
 					})
 				}
