@@ -407,6 +407,41 @@ produces:
 					},
 				},
 			},
+			KeyMetrics: {
+				Type:       schema.TypeList,
+				Optional:   true,
+				ConfigMode: schema.SchemaConfigModeBlock,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"provider": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"address": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "",
+						},
+						"query": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"max": {
+							Type:     schema.TypeFloat,
+							Optional: true,
+						},
+						"min": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"interval": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "1m",
+						},
+					},
+				},
+			},
 			KeyManifests: {
 				Type:     schema.TypeList,
 				Optional: true,

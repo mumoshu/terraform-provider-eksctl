@@ -20,4 +20,3 @@ func Provider() terraform.ResourceProvider {
 		ConfigureFunc: configureProvider(),
 	}
 }
-

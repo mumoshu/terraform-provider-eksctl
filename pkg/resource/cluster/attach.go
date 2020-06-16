@@ -18,7 +18,7 @@ func doAttachAutoScalingGroupsToTargetGroups(set *ClusterSet) error {
 
 	var nextToken *string
 
-	for ;; {
+	for {
 		res, err := cfn.ListStacks(&cloudformation.ListStacksInput{
 			NextToken: nextToken,
 			StackStatusFilter: aws.StringSlice(

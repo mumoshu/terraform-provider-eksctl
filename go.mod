@@ -9,6 +9,8 @@ require (
 	github.com/mitchellh/go-linereader v0.0.0-20190213213312-1b945b3263eb
 	github.com/posener/complete v1.2.1
 	github.com/rs/xid v1.2.1
+	github.com/stretchr/testify v1.5.1
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	gopkg.in/yaml.v3 v3.0.0-20200506231410-2ff61e1afc86
 )
 

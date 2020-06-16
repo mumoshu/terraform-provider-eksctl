@@ -54,4 +54,3 @@ func doDeleteKubernetesResourcesBeforeDestroy(cluster *Cluster, id string) error
 
 	return nil
 }
-

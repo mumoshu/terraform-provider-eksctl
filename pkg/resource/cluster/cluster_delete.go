@@ -48,4 +48,3 @@ func deleteCluster(d *schema.ResourceData) error {
 
 	return nil
 }
-

@@ -46,4 +46,3 @@ func parseJSON(b []byte) (map[string]string, error) {
 	}
 	return output, err
 }
-

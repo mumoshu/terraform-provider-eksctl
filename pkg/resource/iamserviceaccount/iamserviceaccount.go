@@ -108,4 +108,3 @@ func ReadIAMServiceAccount(d *schema.ResourceData) *IAMServiceAccount {
 	a.OverrideExistingServiceAccounts = d.Get(KeyOverrideExistingServiceAccounts).(bool)
 	return &a
 }
-

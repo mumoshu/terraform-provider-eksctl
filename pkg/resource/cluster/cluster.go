@@ -24,6 +24,7 @@ const KeyKubernetesResourceDeletionBeforeDestroy = "kubernetes_resource_deletion
 const KeyALBAttachment = "alb_attachment"
 const KeyVPCID = "vpc_id"
 const KeyManifests = "manifests"
+const KeyMetrics = "metrics"
 
 const (
 	KeyTargetGroupARNs = "target_group_arns"
@@ -64,6 +65,16 @@ type Cluster struct {
 	PrivateSubnetIDs []string
 	ALBAttachments   []ALBAttachment
 	TargetGroupARNs  []string
+	Metrics          []Metric
+}
+
+type Metric struct {
+	Provider string
+	Address  string
+	Query    string
+	Max      *float64
+	Min      *float64
+	Interval time.Duration
 }
 
 type DeleteKubernetesResource struct {

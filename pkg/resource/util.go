@@ -72,7 +72,7 @@ func Run(cmd *exec.Cmd) (*CommandResult, error) {
 
 	logDebug("starting to run eksctl", strings.Join(cmd.Args, " "))
 
-	// Run the command to completion
+	// Execute the command to completion
 	runErr := cmd.Run()
 
 	if err := pw.Close(); err != nil {

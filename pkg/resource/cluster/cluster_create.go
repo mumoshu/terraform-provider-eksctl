@@ -46,4 +46,3 @@ func createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 
 	return set, nil
 }
-

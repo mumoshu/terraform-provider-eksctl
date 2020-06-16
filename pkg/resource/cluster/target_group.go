@@ -21,7 +21,7 @@ func getTargetGroupARNs(region, clusterNamePrefixy string) ([]string, error) {
 
 	var arns []string
 
-	for ; ; {
+	for {
 		log.Printf("getting tagged resources for %s", clusterNamePrefixy)
 
 		res, err := api.GetResources(&resourcegroupstaggingapi.GetResourcesInput{

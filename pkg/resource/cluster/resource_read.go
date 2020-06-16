@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"time"
 )
 
 func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
@@ -136,6 +137,48 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 	tgARNs := d.Get(KeyTargetGroupARNs).([]interface{})
 	for _, arn := range tgARNs {
 		a.TargetGroupARNs = append(a.TargetGroupARNs, arn.(string))
+	}
+
+	metrics := d.Get(KeyMetrics).([]interface{})
+	for _, r := range metrics {
+		m := r.(map[string]interface{})
+
+		var max *float64
+
+		if v, set := m["max"]; set {
+			vv := v.(float64)
+			max = &vv
+		}
+
+		var min *float64
+
+		if v, minSet := m["min"]; minSet {
+			vv := v.(float64)
+			min = &vv
+		}
+
+		var interval time.Duration
+
+		if v, set := m["interval"]; set {
+			d, err := time.ParseDuration(v.(string))
+			if err != nil {
+				return nil, fmt.Errorf("parsing metric.interval %q: %v", v, err)
+			}
+
+			interval = d
+		} else {
+			interval = 1 * time.Minute
+		}
+
+		metric := Metric{
+			Provider: m["provider"].(string),
+			Address:  m["address"].(string),
+			Query:    m["query"].(string),
+			Max:      max,
+			Min:      min,
+			Interval: interval,
+		}
+		a.Metrics = append(a.Metrics, metric)
 	}
 
 	fmt.Printf("Read Cluster:\n%+v", a)

@@ -10,7 +10,6 @@ import (
 	"log"
 	"sort"
 	"strings"
-	"time"
 )
 
 type ListenerStatus struct {
@@ -113,21 +112,21 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 				l2 := l.ALBAttachments[i]
 
 				if l2.Protocol != base.Protocol {
-					return nil, fmt.Errorf("validating alb attachment %d for listener %s: mismatching protocol: got %v for index %d, want %v", i, l.Listener.ListenerArn, l2.Priority, i, base.Priority)
+					return nil, fmt.Errorf("validating alb attachment %d for listener %s: mismatching protocol: got %v for index %d, want %v", i, *l.Listener.ListenerArn, l2.Priority, i, base.Priority)
 				}
 
 				if l2.Priority != base.Priority {
-					return nil, fmt.Errorf("validating alb attachment %d for listener %s: mismatching priority: got %%v for index %d, want %v", i, l.Listener.ListenerArn, l2.Priority, i, base.Priority)
+					return nil, fmt.Errorf("validating alb attachment %d for listener %s: mismatching priority: got %v for index %d, want %v", i, *l.Listener.ListenerArn, l2.Priority, i, base.Priority)
 				}
 
 				l2Hosts := copySortSlice(l2.Hosts)
 				if err := sliceEq("hosts", l2Hosts, baseHosts); err != nil {
-					return nil, fmt.Errorf("validating alb attachment %d for listener %s: mismatching hosts: index %d: %w", i, l.Listener.ListenerArn, i, err)
+					return nil, fmt.Errorf("validating alb attachment %d for listener %s: mismatching hosts: index %d: %w", i, *l.Listener.ListenerArn, i, err)
 				}
 
 				l2PathPatterns := copySortSlice(l2.PathPatterns)
 				if err := sliceEq("path_patterns", l2PathPatterns, basePathPatterns); err != nil {
-					return nil, fmt.Errorf("validating alb attachment %d for listener %s: mismatching path_patterns: index %d: %w", i, l.Listener.ListenerArn, i, err)
+					return nil, fmt.Errorf("validating alb attachment %d for listener %s: mismatching path_patterns: index %d: %w", i, *l.Listener.ListenerArn, i, err)
 				}
 			}
 		}
@@ -183,7 +182,7 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 			desiredTGName := fmt.Sprintf("%s-%d-%s", a.NodeGroupName, a.NodePort, newId)
 
 			if len(desiredTGName) > 32 {
-				return nil, fmt.Errorf("creating target group %s for cluster %s: target group name too long. it must be shorter than 33, but was %d", len(desiredTGName))
+				return nil, fmt.Errorf("creating target group %s for cluster %s: target group name too long. it must be shorter than 33, but was %d", desiredTGName, cluster.Name, len(desiredTGName))
 			}
 
 			var targetType string
@@ -412,94 +411,4 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 	}
 
 	return r, nil
-}
-
-type CanaryOpts struct {
-	CanaryAdvancementInterval time.Duration
-	CanaryAdvancementStep     int
-}
-
-func graduallyShiftTraffic(set *ClusterSet, opts CanaryOpts) error {
-	svc := elbv2.New(awsclicompat.NewSession(set.Cluster.Region))
-
-	listenerStatuses := set.ListenerStatuses
-
-	setDesiredTGTrafficPercentage := func(l ListenerStatus, p int) error {
-		if p > 100 {
-			return fmt.Errorf("BUG: invalid value for p: got %d, must be less than 100", p)
-		}
-
-		if l.DesiredTG == nil {
-			return fmt.Errorf("BUG: DesiredTG is nil: %+v", l)
-		}
-
-		if l.CurrentTG == nil {
-			return fmt.Errorf("BUG: CurrentTG is nil: %+v", l)
-		}
-
-		if l.Rule == nil {
-			return fmt.Errorf("BUG: Rule is nil: %+v", l)
-		}
-
-		_, err := svc.ModifyRule(&elbv2.ModifyRuleInput{
-			Actions: []*elbv2.Action{
-				{
-					ForwardConfig: &elbv2.ForwardActionConfig{
-						TargetGroupStickinessConfig: nil,
-						TargetGroups: []*elbv2.TargetGroupTuple{
-							{
-								TargetGroupArn: l.DesiredTG.TargetGroupArn,
-								Weight:         aws.Int64(int64(p)),
-							}, {
-								TargetGroupArn: l.CurrentTG.TargetGroupArn,
-								Weight:         aws.Int64(int64(100 - p)),
-							},
-						},
-					},
-					Order: aws.Int64(1),
-					Type:  aws.String("forward"),
-				},
-			},
-			RuleArn: l.Rule.RuleArn,
-		})
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
-	for _, l := range listenerStatuses {
-		if l.Rule.Actions != nil && len(l.Rule.Actions) > 0 {
-			if len(l.Rule.Actions) != 1 {
-				return fmt.Errorf("unexpected number of actions in rule %q: want 2, got %d", *l.Rule.RuleArn, len(l.Rule.Actions))
-			}
-
-			// Gradually shift traffic from current tg to desired tg by
-			// updating rule
-			var step int
-
-			if opts.CanaryAdvancementStep > 0 {
-				step = opts.CanaryAdvancementStep
-			} else {
-				step = 5
-			}
-
-			for p := 1; p < 100; p += step {
-				if err := setDesiredTGTrafficPercentage(l, p); err != nil {
-					return err
-				}
-
-				if opts.CanaryAdvancementInterval != 0 {
-					time.Sleep(opts.CanaryAdvancementInterval)
-				}
-			}
-
-			if err := setDesiredTGTrafficPercentage(l, 100); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
