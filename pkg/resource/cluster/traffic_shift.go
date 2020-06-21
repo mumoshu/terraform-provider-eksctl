@@ -23,6 +23,10 @@ type CanaryOpts struct {
 	CanaryAdvancementStep     int
 }
 
+type GlobalMetricQueryTemplateData struct {
+	ClusterName string
+}
+
 func graduallyShiftTraffic(set *ClusterSet, opts CanaryOpts) error {
 	svc := elbv2.New(awsclicompat.NewSession(set.Cluster.Region))
 
@@ -39,7 +43,7 @@ func graduallyShiftTraffic(set *ClusterSet, opts CanaryOpts) error {
 		}
 	}
 
-	return m.SwitchTargetGroup(listenerStatuses, opts)
+	return m.SwitchTargetGroup(CanaryConfig{Region: set.Cluster.Region, ClusterName: string(set.ClusterName)}, listenerStatuses, opts)
 }
 
 func MetricsToAnalyzers(region string, ms []Metric) ([]*Analyzer, error) {
@@ -167,7 +171,14 @@ type ALBRouter struct {
 	Analyzers []*Analyzer
 }
 
-func (m *ALBRouter) SwitchTargetGroup(region string, listenerStatuses ListenerStatuses, opts CanaryOpts) error {
+type CanaryConfig struct {
+	Region      string
+	ClusterName string
+}
+
+func (m *ALBRouter) SwitchTargetGroup(conf CanaryConfig, listenerStatuses ListenerStatuses, opts CanaryOpts) error {
+	region := conf.Region
+
 	svc := m.ELBV2
 
 	setDesiredTGTrafficPercentage := func(l ListenerStatus, p int) error {
@@ -343,15 +354,13 @@ func (m *ALBRouter) SwitchTargetGroup(region string, listenerStatuses ListenerSt
 			ticker := time.NewTicker(DefaultAnalyzeInterval)
 			defer ticker.Stop()
 
-			p := 1
-
 			for {
 				select {
 				case <-gctx.Done():
 					// Deployment finished. Stop checking as not necessary anymore
 					return nil
 				case <-ticker.C:
-					if err := a.Analyze(struct{}{}); err != nil {
+					if err := a.Analyze(GlobalMetricQueryTemplateData{ClusterName: conf.ClusterName}); err != nil {
 						return err
 					}
 				}
