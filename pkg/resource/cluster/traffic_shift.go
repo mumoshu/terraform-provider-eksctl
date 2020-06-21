@@ -225,7 +225,12 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts Ca
 						p += step
 					case <-gctx.Done():
 						if p != 100 {
-							// Do rollback
+							log.Printf("Rolling back traffic for listener %s", *l.Listener.ListenerArn)
+
+							if err := setDesiredTGTrafficPercentage(l, 0); err != nil {
+								return err
+							}
+
 							break
 						}
 
