@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
@@ -10,6 +11,7 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster/metrics"
 	"golang.org/x/sync/errgroup"
+	"text/template"
 	"log"
 	"os"
 	"time"
@@ -71,6 +73,25 @@ func graduallyShiftTraffic(set *ClusterSet, opts CanaryOpts) error {
 	return m.SwitchTargetGroup(listenerStatuses, opts)
 }
 
+func ListerStatusToTemplateData(l ListenerStatus) interface{} {
+	targetGroupARN := *l.DesiredTG.TargetGroupArn
+	var loadBalancerARNs []string
+
+	for _, a := range l.DesiredTG.LoadBalancerArns {
+		loadBalancerARNs = append(loadBalancerARNs, *a)
+	}
+
+	data := struct {
+		TargetGroupARN   string
+		LoadBalancerARNs []string
+	}{
+		TargetGroupARN:   targetGroupARN,
+		LoadBalancerARNs: loadBalancerARNs,
+	}
+
+	return data
+}
+
 type MetricProvider interface {
 	Execute(string) (float64, error)
 }
@@ -82,15 +103,32 @@ type Analyzer struct {
 	Max   *float64
 }
 
-func (a *Analyzer) Analyze() error {
+func (a *Analyzer) Analyze(data interface{}) error {
 	maxRetries := 3
 
 	var v float64
 
 	var err error
 
+	var query string
+
+	{
+		tmpl, err := template.New("query").Parse(a.Query)
+		if err != nil {
+			return fmt.Errorf("parsing query template: %w", err)
+		}
+
+		var buf bytes.Buffer
+
+		if err := tmpl.Execute(&buf, data); err != nil {
+			return fmt.Errorf("executing query template: %w", err)
+		}
+
+		query = buf.String()
+	}
+
 	for i := 0; i < maxRetries; i++ {
-		v, err = a.MetricProvider.Execute(a.Query)
+		v, err = a.MetricProvider.Execute(query)
 		if err == nil {
 			break
 		}
@@ -262,7 +300,7 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts Ca
 								return nil
 							}
 
-							if err := a.Analyze(); err != nil {
+							if err := a.Analyze(ListerStatusToTemplateData(l)); err != nil {
 								return err
 							}
 						}
