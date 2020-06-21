@@ -29,6 +29,7 @@ type ListenerStatus struct {
 	SourceIPs    []string
 	Headers      map[string][]string
 	QueryStrings map[string]string
+	Metrics      []Metric
 }
 
 // the key is listener ARN
@@ -56,6 +57,7 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 
 			l := listenerStatuses[a.ListenerARN]
 			l.ALBAttachments = append(l.ALBAttachments, a)
+			l.Metrics = append(l.Metrics, a.Metrics...)
 		}
 
 		var arns []*string

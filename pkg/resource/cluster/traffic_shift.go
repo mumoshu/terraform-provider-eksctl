@@ -11,9 +11,10 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster/metrics"
 	"golang.org/x/sync/errgroup"
-	"text/template"
 	"log"
 	"os"
+	"sync"
+	"text/template"
 	"time"
 )
 
@@ -29,16 +30,29 @@ func graduallyShiftTraffic(set *ClusterSet, opts CanaryOpts) error {
 
 	m := &ALBRouter{ELBV2: svc}
 
+	{
+		var err error
+
+		m.Analyzers, err = MetricsToAnalyzers(set.Cluster.Region, set.Cluster.Metrics)
+		if err != nil {
+			return err
+		}
+	}
+
+	return m.SwitchTargetGroup(listenerStatuses, opts)
+}
+
+func MetricsToAnalyzers(region string, ms []Metric) ([]*Analyzer, error) {
 	var analyzers []*Analyzer
 
-	for _, m := range set.Cluster.Metrics {
+	for _, m := range ms {
 		var provider MetricProvider
 
 		var err error
 
 		switch m.Provider {
 		case "cloudwatch":
-			s := awsclicompat.NewSession(set.Cluster.Region)
+			s := awsclicompat.NewSession(region)
 			c := cloudwatch.New(s)
 			provider = metrics.NewCloudWatchProvider(c, metrics.ProviderOpts{
 				Address:  m.Address,
@@ -53,11 +67,11 @@ func graduallyShiftTraffic(set *ClusterSet, opts CanaryOpts) error {
 				ApplicationKey: os.Getenv("DATADOG_APPLICATION_KEY"),
 			})
 		default:
-			return fmt.Errorf("creating metrics provider: unknown and unsupported provider %q specified", m.Provider)
+			return nil, fmt.Errorf("creating metrics provider: unknown and unsupported provider %q specified", m.Provider)
 		}
 
 		if err != nil {
-			return fmt.Errorf("creating metrics provider %q: %v", m.Provider, err)
+			return nil, fmt.Errorf("creating metrics provider %q: %v", m.Provider, err)
 		}
 
 		analyzers = append(analyzers, &Analyzer{
@@ -68,9 +82,7 @@ func graduallyShiftTraffic(set *ClusterSet, opts CanaryOpts) error {
 		})
 	}
 
-	m.Analyzers = analyzers
-
-	return m.SwitchTargetGroup(listenerStatuses, opts)
+	return analyzers, nil
 }
 
 func ListerStatusToTemplateData(l ListenerStatus) interface{} {
@@ -155,7 +167,7 @@ type ALBRouter struct {
 	Analyzers []*Analyzer
 }
 
-func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts CanaryOpts) error {
+func (m *ALBRouter) SwitchTargetGroup(region string, listenerStatuses ListenerStatuses, opts CanaryOpts) error {
 	svc := m.ELBV2
 
 	setDesiredTGTrafficPercentage := func(l ListenerStatus, p int) error {
@@ -207,10 +219,25 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts Ca
 		return nil
 	}
 
-	g, gctx := errgroup.WithContext(context.Background())
+	DefaultAnalyzeInterval := 10 * time.Second
+
+	tCtx, cancel := context.WithCancel(context.Background())
+	g, gctx := errgroup.WithContext(tCtx)
+
+	wg := &sync.WaitGroup{}
 
 	for i := range listenerStatuses {
 		l := listenerStatuses[i]
+
+		var analyzers []*Analyzer
+		{
+			var err error
+
+			analyzers, err = MetricsToAnalyzers(region, l.Metrics)
+			if err != nil {
+				return err
+			}
+		}
 
 		if l.Rule.Actions != nil && len(l.Rule.Actions) > 0 {
 			if len(l.Rule.Actions) != 1 {
@@ -235,11 +262,11 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts Ca
 				advancementInterval = 30 * time.Second
 			}
 
-			checkInterval := 10 * time.Second
-
+			wg.Add(1)
 			g.Go(func() error {
 				ticker := time.NewTicker(advancementInterval)
 				defer ticker.Stop()
+				defer wg.Done()
 
 				p := 1
 
@@ -282,24 +309,21 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts Ca
 				return nil
 			})
 
-			for i := range m.Analyzers {
+			// Check per alb, per target group metrics
+			for i := range analyzers {
 				a := m.Analyzers[i]
 
 				// TODO Check Datadog metrics and return non-nil error on check failure to cancel all the traffic shift
 				g.Go(func() error {
-					ticker := time.NewTicker(checkInterval)
+					ticker := time.NewTicker(DefaultAnalyzeInterval)
 					defer ticker.Stop()
-
-					p := 1
 
 					for {
 						select {
+						case <-gctx.Done():
+							// Deployment finished. Stop checking as not necessary anymore
+							return nil
 						case <-ticker.C:
-							if p == 100 {
-								// Deployment finished. Stop checking as not necessary anymore
-								return nil
-							}
-
 							if err := a.Analyze(ListerStatusToTemplateData(l)); err != nil {
 								return err
 							}
@@ -311,7 +335,44 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts Ca
 		}
 	}
 
-	if err := g.Wait(); err == nil {
+	// Check per cluster metrics
+	for i := range m.Analyzers {
+		a := m.Analyzers[i]
+
+		g.Go(func() error {
+			ticker := time.NewTicker(DefaultAnalyzeInterval)
+			defer ticker.Stop()
+
+			p := 1
+
+			for {
+				select {
+				case <-gctx.Done():
+					// Deployment finished. Stop checking as not necessary anymore
+					return nil
+				case <-ticker.C:
+					if err := a.Analyze(struct{}{}); err != nil {
+						return err
+					}
+				}
+			}
+		})
+	}
+
+	go func() {
+		defer cancel()
+
+		wg.Wait()
+	}()
+
+	var err error
+	{
+		defer cancel()
+
+		err = g.Wait()
+	}
+
+	if err == nil {
 		log.Printf("Traffic shifting finished successfully.")
 	} else if err == context.Canceled {
 		log.Printf("Traffic shifting canceled externally.")

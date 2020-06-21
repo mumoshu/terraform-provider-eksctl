@@ -121,6 +121,7 @@ type ALBAttachment struct {
 	SourceIPs    []string
 	Headers      map[string][]string
 	QueryStrings map[string]string
+	Metrics      []Metric
 }
 
 type ClusterSet struct {

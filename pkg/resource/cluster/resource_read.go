@@ -111,6 +111,11 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 			}
 		}
 
+		metrics, err := LoadMetrics(m[KeyManifests].([]interface{}))
+		if err != nil {
+			return nil, err
+		}
+
 		t := ALBAttachment{
 			NodeGroupName: m["node_group_name"].(string),
 			Weght:         m["weight"].(int),
@@ -124,6 +129,7 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 			SourceIPs:     sourceIPs,
 			Headers:       headers,
 			QueryStrings:  querystrings,
+			Metrics:       metrics,
 		}
 
 		a.ALBAttachments = append(a.ALBAttachments, t)
@@ -139,7 +145,25 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 		a.TargetGroupARNs = append(a.TargetGroupARNs, arn.(string))
 	}
 
-	metrics := d.Get(KeyMetrics).([]interface{})
+	{
+		metrics := d.Get(KeyMetrics).([]interface{})
+
+		var err error
+
+		a.Metrics, err = LoadMetrics(metrics)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	fmt.Printf("Read Cluster:\n%+v", a)
+
+	return &a, nil
+}
+
+func LoadMetrics(metrics []interface{}) ([]Metric, error) {
+	var result []Metric
+
 	for _, r := range metrics {
 		m := r.(map[string]interface{})
 
@@ -178,10 +202,8 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 			Min:      min,
 			Interval: interval,
 		}
-		a.Metrics = append(a.Metrics, metric)
+		result = append(result, metric)
 	}
 
-	fmt.Printf("Read Cluster:\n%+v", a)
-
-	return &a, nil
+	return result, nil
 }

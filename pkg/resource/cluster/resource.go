@@ -12,6 +12,42 @@ import (
 func Resource() *schema.Resource {
 	ALBSupportedProtocols := []string{"http", "https", "tcp", "tls", "udp", "tcp_udp"}
 
+	metrics := &schema.Schema{
+		Type:       schema.TypeList,
+		Optional:   true,
+		ConfigMode: schema.SchemaConfigModeBlock,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"provider": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+				"address": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Default:  "",
+				},
+				"query": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+				"max": {
+					Type:     schema.TypeFloat,
+					Optional: true,
+				},
+				"min": {
+					Type:     schema.TypeInt,
+					Optional: true,
+				},
+				"interval": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Default:  "1m",
+				},
+			},
+		},
+	}
+
 	return &schema.Resource{
 		Create: func(d *schema.ResourceData, meta interface{}) error {
 			set, err := createCluster(d)
@@ -377,71 +413,11 @@ produces:
  }
 `,
 						},
-						"analysis": {
-							Type: schema.TypeList,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									// The provider waits until healthy target counts becomes greater than 0 and then
-									// queries ELB metrics to determine to ensure that
-									// - The targetgroup's 5xx count in the interval is LESS THAN max_5xx_count
-									// - The targetgroup's 5xx count in the interval is GREATER THAN min_2xx_count
-									"interval_sec": {
-										Type:     schema.TypeInt,
-										Optional: true,
-										// ELB emits metrics every 60 sec
-										// https://docs.aws.amazon.com/ja_jp/elasticloadbalancing/latest/application/load-balancer-cloudwatch-metrics.html
-										Default: 60,
-									},
-									"max_5xx_count": {
-										Type:     schema.TypeInt,
-										Optional: true,
-									},
-									"min_2xx_count": {
-										Type:     schema.TypeInt,
-										Optional: true,
-									},
-								},
-							},
-							Optional: true,
-						},
+						KeyMetrics: metrics,
 					},
 				},
 			},
-			KeyMetrics: {
-				Type:       schema.TypeList,
-				Optional:   true,
-				ConfigMode: schema.SchemaConfigModeBlock,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"provider": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"address": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "",
-						},
-						"query": {
-							Type:     schema.TypeString,
-							Required: true,
-						},
-						"max": {
-							Type:     schema.TypeFloat,
-							Optional: true,
-						},
-						"min": {
-							Type:     schema.TypeInt,
-							Optional: true,
-						},
-						"interval": {
-							Type:     schema.TypeString,
-							Optional: true,
-							Default:  "1m",
-						},
-					},
-				},
-			},
+			KeyMetrics: metrics,
 			KeyManifests: {
 				Type:     schema.TypeList,
 				Optional: true,
