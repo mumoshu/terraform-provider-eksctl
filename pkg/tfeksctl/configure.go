@@ -12,7 +12,15 @@ type ProviderConfig struct {
 
 func configureProvider() func(*schema.ResourceData) (interface{}, error) {
 	return func(d *schema.ResourceData) (interface{}, error) {
-		s := awsclicompat.NewSession(d.Get("region").(string))
+		var region string
+
+		if r := d.Get("region"); r != nil {
+			if s, ok := r.(string); ok {
+				region = s
+			}
+		}
+
+		s := awsclicompat.NewSession(region)
 
 		return &ProviderConfig{
 			AWSSession: s,

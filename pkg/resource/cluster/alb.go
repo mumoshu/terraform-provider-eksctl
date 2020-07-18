@@ -301,10 +301,16 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 				}
 
 				if len(listenerStatus.Methods) > 0 {
+					methods := make([]string, len(listenerStatus.Methods))
+
+					for i, m := range listenerStatus.Methods {
+						methods[i] = strings.ToUpper(m)
+					}
+
 					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
 						Field: aws.String("http-request-method"),
 						HttpRequestMethodConfig: &elbv2.HttpRequestMethodConditionConfig{
-							Values: aws.StringSlice(listenerStatus.Methods),
+							Values: aws.StringSlice(methods),
 						},
 					})
 				}
@@ -370,6 +376,7 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 				created, err := svc.CreateRule(createRuleInput)
 				if err != nil {
 					log.Printf("creating rule: %+v", createRuleInput)
+					log.Printf("If you've ended up with a duplicated rule, run `aws elbv2 describe-rules --listener-arn ARN` and then `aws elbv2 delete-rule --rule-arn ARN` to clean up.")
 
 					return nil, fmt.Errorf("creating listener rule for listener %s: %w", listenerARN, err)
 				}

@@ -111,9 +111,17 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 			}
 		}
 
-		metrics, err := LoadMetrics(m[KeyManifests].([]interface{}))
-		if err != nil {
-			return nil, err
+		ms := m[KeyMetrics]
+
+		var metrics []Metric
+
+		if ms != nil {
+			var err error
+
+			metrics, err = LoadMetrics(ms.([]interface{}))
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		t := ALBAttachment{
