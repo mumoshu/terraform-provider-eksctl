@@ -79,7 +79,7 @@ Use `kubernetes_resource_deletion_before_destroy` blocks.
 
 It is useful for e.g.:
 
-- Stopping Flux so that it won't try to install new manifests before the cluster being down
+- Stopping Flux so that it won't try to install new manifests to fail while the cluster is being terminated
 - Stopping pods whose IP addresses are exposed via a headless service and external-dns before the cluster being down, so that stale pod IPs won't remain in the serviced discovery system
 
 ```hcl
