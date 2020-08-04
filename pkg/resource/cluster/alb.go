@@ -36,10 +36,14 @@ type ListenerStatus struct {
 type ListenerStatuses = map[string]ListenerStatus
 
 func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuses, error) {
-	if cluster.VPCID == "" && len(cluster.ALBAttachments) > 0 {
-		log.Printf("planning listener changes: %+v", cluster)
+	log.Printf("planning listener changes: %+v", cluster)
 
-		return nil, errors.New("planning listener changes: vpc id is required when alb_attachments has one or more items")
+	if cluster.VPCID == "" {
+		if len(cluster.ALBAttachments) > 0 {
+			return nil, errors.New("planning listener changes: vpc id is required when alb_attachments has one or more items")
+		}
+
+		return nil, nil
 	}
 
 	svc := elbv2.New(awsclicompat.NewSession(cluster.Region))

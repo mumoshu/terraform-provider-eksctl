@@ -9,6 +9,12 @@ import (
 )
 
 func createVPCResourceTags(cluster *Cluster, clusterName ClusterName) error {
+	if cluster.VPCID == "" {
+		log.Printf("Skipped VPC resource tagging due to that VPC and subnets management are handled to eksctl")
+
+		return nil
+	}
+
 	ec2session := ec2.New(awsclicompat.NewSession(cluster.Region))
 
 	tagKey := fmt.Sprintf("kubernetes.io/cluster/%s", clusterName)

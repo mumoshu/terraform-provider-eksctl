@@ -194,7 +194,7 @@ func PrepareClusterSet(d *schema.ResourceData, optNewId ...string) (*ClusterSet,
 
 	listenerStatuses, err := planListenerChanges(a, d.Id(), newId)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("planning listener changes: %v", err)
 	}
 
 	seedClusterConfig := []byte(fmt.Sprintf(`
