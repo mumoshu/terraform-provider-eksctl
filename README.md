@@ -42,19 +42,115 @@ provider "eksctl" {}
 
 You use `eksctl_cluster` resource to CRUD your cluster from Terraform.
 
+On `terraform apply`, the provider runs `eksctl create`, `eksctl update` and `eksctl delete` depending on the situation. It uses `eksctl delete nodegroup --drain` for deleting nodegroups for high availability.
+
+On `terraform destroy`, the provider runs `eksctl delete`
+
+The computed field `output` is used to surface the output from `eksctl`. You can use in the string interpolation to produce a useful Terraform output.
+
+## Declaring `eksctl_cluster` resource
+
 It's almost like writing and embedding eksctl "cluster.yaml" into `spec` attribute of the Terraform resource definition block, except that some attributes like cluster `name` and `region` has dedicated HCL attributes.
 
-Please note that you need to set up the following pre-requisites:
+Depending on the scenario, there are a few patterns in how you'de declare a `eksctl_cluster` resource.
+
+- Ephemeral cluster (Don't reuse VPC, subnets, or anything)
+- Reuse VPC
+- Reuse VPC and subnets
+- Reuse VPC, subnets, and ALBs
+
+In general, for any non-ephemeral cluster you must set up the following pre-requisites:
 
 - VPC
 - Public/Private subnets
-- (Only when you use blue-green cluster deployment) ALB and listener(s)
+- ALB and listener(s) (Only when you use blue-green cluster deployment) 
 
-VPC, subnets, ALB, and listeners are re-used across revisions of the cluster.
+### Ephemeral cluster
+
+When you let `eksctl` manage every AWS resource for the cluster, your resource should look like the below:
+
+```hcl-terraform
+provider "eksctl" {}
+
+resource "eksctl_cluster" "primary" {
+  eksctl_bin = "eksctl-0.20.0"
+  name = "primary1"
+  region = "us-east-2"
+  spec = <<EOS
+
+nodeGroups:
+  - name: ng1
+    instanceType: m5.large
+    desiredCapacity: 1
+EOS
+}
+```
+
+### Reuse VPC
+
+Assuming you've already created a VPC with ID `vpc-09c6c9f579baef3ea`, your resource should look like the below:
+
+```hcl-terraform
+provider "eksctl" {}
+
+resource "eksctl_cluster" "vpcreuse1" {
+  eksctl_bin = "eksctl-0.20.0"
+  name = "vpcreuse1"
+  region = "us-east-2"
+  vpc_id = "vpc-09c6c9f579baef3ea"
+  spec = <<EOS
+
+nodeGroups:
+  - name: ng1
+    instanceType: m5.large
+    desiredCapacity: 1
+EOS
+}
+```
+
+### Reuse VPC and subnets
+
+Assuming you've already created a VPC with ID `vpc-09c6c9f579baef3ea` and a private subnet "subnet-1234",
+a public subnet "subnet-2345", your resource should look like the below:
+
+```hcl-terraform
+provider "eksctl" {}
+
+resource "eksctl_cluster" "vpcreuse1" {
+  eksctl_bin = "eksctl-0.20.0"
+  name = "vpcreuse1"
+  region = "us-east-2"
+  vpc_id = "vpc-09c6c9f579baef3ea"
+  spec = <<EOS
+
+vpc:
+  cidr: "192.168.0.0/16"       # (optional, must match CIDR used by the given VPC)
+  subnets:
+    # must provide 'private' and/or 'public' subnets by availibility zone as shown
+    private:
+      us-east-2a:
+        id: "subnet-1234"
+        cidr: "192.168.160.0/19" # (optional, must match CIDR used by the given subnet)
+    public:
+      us-east-2a:
+        id: "subnet-2345"
+        cidr: "192.168.64.0/19" # (optional, must match CIDR used by the given subnet)
+
+nodeGroups:
+  - name: ng1
+    instanceType: m5.large
+    desiredCapacity: 1
+EOS
+}
+```
+
+### Reuse VPC, subnets, and ALBs
+
+In a production setup, the VPC, subnets, ALB, and listeners should be re-used across revisions of the cluster, so that you can let the provider to switch the cluster revisions in a blue-gree/canary deployment mannaer.
 
 Assuming you've used the [terraform-aws-vpc](https://github.com/terraform-aws-modules/terraform-aws-vpc) module for setting up VPC and subnets, a `eksctl_cluster` resource should usually look like the below:
 
-```
+```hcl-terraform
 resource "eksctl_cluster" "primary" {
   eksctl_bin = "eksctl-dev"
   name = "existingvpc2"
@@ -104,12 +200,6 @@ vpc:
 EOS
 }
 ```
-
-On `terraform apply`, the provider runs `eksctl create`, `eksctl update` and `eksctl delete` depending on the situation. It uses `eksctl delete nodegroup --drain` for deleting nodegroups for high availability.
-
-On `terraform destroy`, the provider runs `eksctl delete`
-
-The computed field `output` is used to surface the output from `eksctl`. You can use in the string interpolation to produce a useful Terraform output.
 
 ## Advanced Features and Use-cases
 
