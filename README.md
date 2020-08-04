@@ -9,13 +9,28 @@ Benefits:
 
 ## Installation
 
-Install the `terraform-provider-eksctl` binary under `terraform.d/plugins/${OS}_${ARCH}`.
+**For Terraform 0.12:**
 
-There's a convenient Make target for that so you can just run:
+Install the `terraform-provider-eksctl` binary under `.terraform/plugins/${OS}_${ARCH}`, so that the binary is at e.g. `${WORKSPACE}/.terraform/plugins/darwin_amd64/terraform-provider-eksctl`.
+
+You can also install the provider globally under `${HOME}/.terraform.d/plugins/${OS}_${ARCH}`, so that it is available from all the tf workspaces.
+
+**For Terraform 0.13 and later:**
+
+The provider is [available at Terraform Registry](https://registry.terraform.io/providers/mumoshu/eksctl/latest?pollNotifications=true) so you can just add the following to your tf file for installation:
 
 ```
-$ make install
+terraform {
+  required_providers {
+    helmfile = {
+      source = "mumoshu/eksctl"
+      version = "VERSION"
+    }
+  }
+}
 ```
+
+Please replace `VERSION` with the version number of the provider without the `v` prefix, like `0.3.14`.
 
 ## Usage
 
@@ -114,8 +129,18 @@ As of today, [the API is mostly there](https://github.com/mumoshu/terraform-prov
 
 If you wish to build this yourself, follow the instructions:
 
-	cd terraform-provider-eksctl
-	go build
+```
+$ cd terraform-provider-eksctl
+$ go build
+```
+
+There's also a convenient Make target for installing the provider into the global tf providers directory:
+
+```
+$ make install
+```
+
+The above will install the provider's binary under `${HOME}/.terraform.d/plugins/${OS}_${ARCH}`.
 
 ## Acknowledgement
 
