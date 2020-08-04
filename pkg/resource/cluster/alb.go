@@ -46,6 +46,10 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 		return nil, nil
 	}
 
+	if len(cluster.ALBAttachments) == 0 {
+		return nil, nil
+	}
+
 	svc := elbv2.New(awsclicompat.NewSession(cluster.Region))
 
 	//oldClusterName := getClusterName(cluster, oldId)
