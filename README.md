@@ -42,18 +42,67 @@ provider "eksctl" {}
 
 You use `eksctl_cluster` resource to CRUD your cluster from Terraform.
 
-It's almost like writing and embedding eksctl "cluster.yaml" into `spec` attribute of the Terraform resource definition block, except that some attributes like cluster `name` and `region` has dedicated HCL attributes:
+It's almost like writing and embedding eksctl "cluster.yaml" into `spec` attribute of the Terraform resource definition block, except that some attributes like cluster `name` and `region` has dedicated HCL attributes.
+
+Please note that you need to set up the following pre-requisites:
+
+- VPC
+- Public/Private subnets
+- (Only when you use blue-green cluster deployment) ALB and listener(s)
+
+VPC, subnets, ALB, and listeners are re-used across revisions of the cluster.
+
+Assuming you've used the [terraform-aws-vpc](https://github.com/terraform-aws-modules/terraform-aws-vpc) module for setting up VPC and subnets, a `eksctl_cluster` resource should usually look like the below:
 
 ```
 resource "eksctl_cluster" "primary" {
-  name = "primary"
+  eksctl_bin = "eksctl-dev"
+  name = "existingvpc2"
   region = "us-east-2"
-
+  api_version = "eksctl.io/v1alpha5"
+  version = "1.16"
+  vpc_id = module.vpc.vpc_id
+  revision = 1
   spec = <<EOS
+
+nodeGroups:
   - name: ng2
     instanceType: m5.large
     desiredCapacity: 1
+    securityGroups:
+      attachIDs:
+      - ${aws_security_group.public_alb_private_backend.id}
+
+iam:
+  withOIDC: true
+  serviceAccounts: []
+
+vpc:
+  cidr: "${module.vpc.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
+  subnets:
+    # must provide 'private' and/or 'public' subnets by availibility zone as shown
+    private:
+      ${module.vpc.azs[0]}:
+        id: "${module.vpc.private_subnets[0]}"
+        cidr: "${module.vpc.private_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
+      ${module.vpc.azs[1]}:
+        id: "${module.vpc.private_subnets[1]}"
+        cidr: "${module.vpc.private_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
+      ${module.vpc.azs[2]}:
+        id: "${module.vpc.private_subnets[2]}"
+        cidr: "${module.vpc.private_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
+    public:
+      ${module.vpc.azs[0]}:
+        id: "${module.vpc.public_subnets[0]}"
+        cidr: "${module.vpc.public_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
+      ${module.vpc.azs[1]}:
+        id: "${module.vpc.public_subnets[1]}"
+        cidr: "${module.vpc.public_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
+      ${module.vpc.azs[2]}:
+        id: "${module.vpc.public_subnets[2]}"
+        cidr: "${module.vpc.public_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
 EOS
+}
 ```
 
 On `terraform apply`, the provider runs `eksctl create`, `eksctl update` and `eksctl delete` depending on the situation. It uses `eksctl delete nodegroup --drain` for deleting nodegroups for high availability.
