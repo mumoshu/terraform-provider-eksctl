@@ -22,7 +22,7 @@ The provider is [available at Terraform Registry](https://registry.terraform.io/
 ```
 terraform {
   required_providers {
-    helmfile = {
+    eksctl = {
       source = "mumoshu/eksctl"
       version = "VERSION"
     }
