@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
 	"log"
@@ -63,18 +64,9 @@ type Cluster struct {
 
 	PublicSubnetIDs  []string
 	PrivateSubnetIDs []string
-	ALBAttachments   []ALBAttachment
+	ALBAttachments   []courier.ALBAttachment
 	TargetGroupARNs  []string
-	Metrics          []Metric
-}
-
-type Metric struct {
-	Provider string
-	Address  string
-	Query    string
-	Max      *float64
-	Min      *float64
-	Interval time.Duration
+	Metrics          []courier.Metric
 }
 
 type DeleteKubernetesResource struct {
@@ -103,34 +95,13 @@ type Subnet struct {
 	ID string `yaml:"id"`
 }
 
-type ALBAttachment struct {
-	NodeGroupName string
-	Weght         int
-	ListenerARN   string
-
-	// TargetGroup settings
-
-	NodePort int
-	Protocol string
-
-	// ALB Listener Rule settings
-	Priority     int
-	Hosts        []string
-	PathPatterns []string
-	Methods      []string
-	SourceIPs    []string
-	Headers      map[string][]string
-	QueryStrings map[string]string
-	Metrics      []Metric
-}
-
 type ClusterSet struct {
 	ClusterID        string
 	ClusterName      ClusterName
 	Cluster          *Cluster
 	ClusterConfig    []byte
 	ListenerStatuses ListenerStatuses
-	CanaryOpts       CanaryOpts
+	CanaryOpts       courier.CanaryOpts
 }
 
 type NodeGroup struct {
@@ -270,9 +241,11 @@ metadata:
 		Cluster:          a,
 		ClusterConfig:    mergedClusterConfig,
 		ListenerStatuses: listenerStatuses,
-		CanaryOpts: CanaryOpts{
+		CanaryOpts: courier.CanaryOpts{
 			CanaryAdvancementInterval: 5 * time.Second,
 			CanaryAdvancementStep:     5,
+			Region:                    a.Region,
+			ClusterName:               string(getClusterName(a, id)),
 		},
 	}, nil
 }

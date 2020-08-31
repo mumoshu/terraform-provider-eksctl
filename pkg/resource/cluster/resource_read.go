@@ -3,7 +3,7 @@ package cluster
 import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"time"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 )
 
 func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
@@ -65,78 +65,37 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 	for _, r := range albAttachments {
 		m := r.(map[string]interface{})
 
-		var hosts []string
-		if r := m["hosts"].(*schema.Set); r != nil {
-			for _, h := range r.List() {
-				hosts = append(hosts, h.(string))
-			}
-		}
-
-		var pathPatterns []string
-		if r := m["path_patterns"].(*schema.Set); r != nil {
-			for _, p := range r.List() {
-				pathPatterns = append(pathPatterns, p.(string))
-			}
-		}
-
-		var methods []string
-		if r := m["methods"].(*schema.Set); r != nil {
-			for _, p := range r.List() {
-				methods = append(methods, p.(string))
-			}
-		}
-
-		var sourceIPs []string
-		if r := m["source_ips"].(*schema.Set); r != nil {
-			for _, p := range r.List() {
-				sourceIPs = append(sourceIPs, p.(string))
-			}
-		}
-
-		var headers map[string][]string
-		if r := m["headers"].(map[string]interface{}); r != nil {
-			for k, rawVals := range r {
-				var vs []string
-				for _, rawVal := range rawVals.([]interface{}) {
-					vs = append(vs, rawVal.(string))
-				}
-				headers[k] = vs
-			}
-		}
-
-		var querystrings map[string]string
-		if r := m["querystrings"].(map[string]interface{}); r != nil {
-			for k, rawVal := range r {
-				querystrings[k] = rawVal.(string)
-			}
+		r, err := courier.ReadListenerRule(&courier.MapReader{M: m})
+		if err != nil {
+			return nil, err
 		}
 
 		ms := m[KeyMetrics]
 
-		var metrics []Metric
+		var metrics []courier.Metric
 
 		if ms != nil {
 			var err error
 
-			metrics, err = LoadMetrics(ms.([]interface{}))
+			metrics, err = courier.LoadMetrics(ms.([]interface{}))
 			if err != nil {
 				return nil, err
 			}
 		}
 
-		t := ALBAttachment{
+		t := courier.ALBAttachment{
 			NodeGroupName: m["node_group_name"].(string),
 			Weght:         m["weight"].(int),
-			ListenerARN:   m["listener_arn"].(string),
+			ListenerARN:   r.ListenerARN,
 			Protocol:      m["protocol"].(string),
 			NodePort:      m["node_port"].(int),
-			Priority:      m["priority"].(int),
-			Hosts:         hosts,
-			PathPatterns:  pathPatterns,
-			Methods:       methods,
-			SourceIPs:     sourceIPs,
-			Headers:       headers,
-			QueryStrings:  querystrings,
+			Priority:      r.Priority,
+			Hosts:         r.Hosts,
+			PathPatterns:  r.PathPatterns,
+			Methods:       r.Methods,
+			SourceIPs:     r.SourceIPs,
+			Headers:       r.Headers,
+			QueryStrings:  r.QueryStrings,
 			Metrics:       metrics,
 		}
 
@@ -158,7 +117,7 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 
 		var err error
 
-		a.Metrics, err = LoadMetrics(metrics)
+		a.Metrics, err = courier.LoadMetrics(metrics)
 		if err != nil {
 			return nil, err
 		}
@@ -169,49 +128,3 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 	return &a, nil
 }
 
-func LoadMetrics(metrics []interface{}) ([]Metric, error) {
-	var result []Metric
-
-	for _, r := range metrics {
-		m := r.(map[string]interface{})
-
-		var max *float64
-
-		if v, set := m["max"]; set {
-			vv := v.(float64)
-			max = &vv
-		}
-
-		var min *float64
-
-		if v, minSet := m["min"]; minSet {
-			vv := v.(float64)
-			min = &vv
-		}
-
-		var interval time.Duration
-
-		if v, set := m["interval"]; set {
-			d, err := time.ParseDuration(v.(string))
-			if err != nil {
-				return nil, fmt.Errorf("parsing metric.interval %q: %v", v, err)
-			}
-
-			interval = d
-		} else {
-			interval = 1 * time.Minute
-		}
-
-		metric := Metric{
-			Provider: m["provider"].(string),
-			Address:  m["address"].(string),
-			Query:    m["query"].(string),
-			Max:      max,
-			Min:      min,
-			Interval: interval,
-		}
-		result = append(result, metric)
-	}
-
-	return result, nil
-}

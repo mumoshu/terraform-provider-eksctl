@@ -23,8 +23,8 @@ func TestDatadogProvider_RunQuery(t *testing.T) {
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			aq := r.URL.Query().Get("query")
 			assert.Equal(t, eq, aq)
-			assert.Equal(t, appKey, r.Header.Get(datadogApplicationKeyHeaderKey))
-			assert.Equal(t, apiKey, r.Header.Get(datadogAPIKeyHeaderKey))
+			assert.Equal(t, appKey, r.Header.Get(DatadogApplicationKeyHeaderKey))
+			assert.Equal(t, apiKey, r.Header.Get(DatadogAPIKeyHeaderKey))
 
 			from, err := strconv.ParseInt(r.URL.Query().Get("from"), 10, 64)
 			if assert.NoError(t, err) {

@@ -39,7 +39,7 @@ func NewCloudWatchProvider(client cloudwatchiface.CloudWatchAPI, provider Provid
 func (p *CloudWatch) Execute(query string) (float64, error) {
 	var cq []*cloudwatch.MetricDataQuery
 	if err := json.Unmarshal([]byte(query), &cq); err != nil {
-		return 0, fmt.Errorf("error unmarshaling query: %s", err.Error())
+		return 0, fmt.Errorf("cloudwatch metrics provider: error unmarshaling query %q: %v", query, err)
 	}
 
 	end := time.Now()

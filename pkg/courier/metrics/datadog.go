@@ -18,10 +18,10 @@ const (
 	datadogAPIKeyValidationPath = "/api/v1/validate"
 
 	datadogAPIKeySecretKey = "datadog_api_key"
-	datadogAPIKeyHeaderKey = "DD-API-KEY"
+	DatadogAPIKeyHeaderKey = "DD-API-KEY"
 
 	datadogApplicationKeySecretKey = "datadog_application_key"
-	datadogApplicationKeyHeaderKey = "DD-APPLICATION-KEY"
+	DatadogApplicationKeyHeaderKey = "DD-APPLICATION-KEY"
 
 	datadogFromDeltaMultiplierOnMetricInterval = 10
 )
@@ -87,8 +87,8 @@ func (p *Datadog) Execute(query string) (float64, error) {
 		return 0, fmt.Errorf("error http.NewRequest: %w", err)
 	}
 
-	req.Header.Set(datadogAPIKeyHeaderKey, p.apiKey)
-	req.Header.Set(datadogApplicationKeyHeaderKey, p.applicationKey)
+	req.Header.Set(DatadogAPIKeyHeaderKey, p.apiKey)
+	req.Header.Set(DatadogApplicationKeyHeaderKey, p.applicationKey)
 	now := time.Now().Unix()
 	q := req.URL.Query()
 	q.Add("query", query)

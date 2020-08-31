@@ -7,33 +7,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"log"
 	"sort"
 	"strings"
 )
 
-type ListenerStatus struct {
-	Listener       *elbv2.Listener
-	Rule           *elbv2.Rule
-	ALBAttachments []ALBAttachment
-
-	DesiredTG  *elbv2.TargetGroup
-	CurrentTG  *elbv2.TargetGroup
-	DeletedTGs *elbv2.TargetGroup
-
-	// Common listener rule settings
-	RulePriority int64
-	Hosts        []string
-	PathPatterns []string
-	Methods      []string
-	SourceIPs    []string
-	Headers      map[string][]string
-	QueryStrings map[string]string
-	Metrics      []Metric
-}
-
 // the key is listener ARN
-type ListenerStatuses = map[string]ListenerStatus
+type ListenerStatuses = map[string]courier.ListenerStatus
 
 func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuses, error) {
 	log.Printf("planning listener changes: %+v", cluster)
@@ -55,12 +36,12 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 	//oldClusterName := getClusterName(cluster, oldId)
 	//newClusterName := getClusterName(cluster, newId)
 
-	listenerStatuses := map[string]*ListenerStatus{}
+	listenerStatuses := map[string]*courier.ListenerStatus{}
 	{
 		for i := range cluster.ALBAttachments {
 			a := cluster.ALBAttachments[i]
 			if _, ok := listenerStatuses[a.ListenerARN]; !ok {
-				listenerStatuses[a.ListenerARN] = &ListenerStatus{}
+				listenerStatuses[a.ListenerARN] = &courier.ListenerStatus{}
 			}
 
 			l := listenerStatuses[a.ListenerARN]
@@ -272,115 +253,11 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 		var targetRuleAfterUpdate *elbv2.Rule
 		{
 			if targetRuleBeforeUpdate == nil && listenerStatus.DesiredTG != nil {
-				// Create rule and set it to l.Rule
-				ruleConditions := []*elbv2.RuleCondition{
-					//	{
-					//		Field:                   nil,
-					//		HostHeaderConfig:        nil,
-					//		HttpHeaderConfig:        nil,
-					//		HttpRequestMethodConfig: nil,
-					//		PathPatternConfig:       nil,
-					//		QueryStringConfig:       nil,
-					//		SourceIpConfig:          nil,
-					//		Values:                  nil,
-					//	}
+				createRuleInput, err := StatusToCreateRuleInput(listenerARN, listenerStatus)
+				if err != nil {
+					return nil, err
 				}
 
-				// See this for how rule conditions should be composed:
-				// https://cloudaffaire.com/aws-application-load-balancer-listener-rules-and-advance-routing-options
-				// (I found it much readable and helpful than the official reference doc
-
-				if len(listenerStatus.Hosts) > 0 {
-					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-						Field: aws.String("host-header"),
-						HostHeaderConfig: &elbv2.HostHeaderConditionConfig{
-							Values: aws.StringSlice(listenerStatus.Hosts),
-						},
-					})
-				}
-
-				if len(listenerStatus.PathPatterns) > 0 {
-					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-						Field: aws.String("path-pattern"),
-						PathPatternConfig: &elbv2.PathPatternConditionConfig{
-							Values: aws.StringSlice(listenerStatus.PathPatterns),
-						},
-					})
-				}
-
-				if len(listenerStatus.Methods) > 0 {
-					methods := make([]string, len(listenerStatus.Methods))
-
-					for i, m := range listenerStatus.Methods {
-						methods[i] = strings.ToUpper(m)
-					}
-
-					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-						Field: aws.String("http-request-method"),
-						HttpRequestMethodConfig: &elbv2.HttpRequestMethodConditionConfig{
-							Values: aws.StringSlice(methods),
-						},
-					})
-				}
-
-				if len(listenerStatus.SourceIPs) > 0 {
-					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-						Field: aws.String("source-ip"),
-						SourceIpConfig: &elbv2.SourceIpConditionConfig{
-							Values: aws.StringSlice(listenerStatus.SourceIPs),
-						},
-					})
-				}
-
-				if len(listenerStatus.Headers) > 0 {
-					for name, values := range listenerStatus.Headers {
-						ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-							Field: aws.String("http-header"),
-							HttpHeaderConfig: &elbv2.HttpHeaderConditionConfig{
-								HttpHeaderName: aws.String(name),
-								Values:         aws.StringSlice(values),
-							},
-						})
-					}
-				}
-
-				if len(listenerStatus.QueryStrings) > 0 {
-					var vs []*elbv2.QueryStringKeyValuePair
-
-					for k, v := range listenerStatus.QueryStrings {
-						vs = append(vs, &elbv2.QueryStringKeyValuePair{
-							Key:   aws.String(k),
-							Value: aws.String(v),
-						})
-					}
-					ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-						Field: aws.String("query-string"),
-						QueryStringConfig: &elbv2.QueryStringConditionConfig{
-							Values: vs,
-						},
-					})
-				}
-
-				createRuleInput := &elbv2.CreateRuleInput{
-					Actions: []*elbv2.Action{
-						{
-							ForwardConfig: &elbv2.ForwardActionConfig{
-								TargetGroupStickinessConfig: nil,
-								TargetGroups: []*elbv2.TargetGroupTuple{
-									{
-										TargetGroupArn: listenerStatus.DesiredTG.TargetGroupArn,
-										Weight:         aws.Int64(100),
-									},
-								},
-							},
-							TargetGroupArn: listenerStatus.DesiredTG.TargetGroupArn,
-							Type:           aws.String("forward"),
-						},
-					},
-					Priority:    aws.Int64(listenerStatus.RulePriority),
-					Conditions:  ruleConditions,
-					ListenerArn: aws.String(listenerARN),
-				}
 				created, err := svc.CreateRule(createRuleInput)
 				if err != nil {
 					log.Printf("creating rule: %+v", createRuleInput)
@@ -428,4 +305,118 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 	}
 
 	return r, nil
+}
+
+func StatusToCreateRuleInput(listenerARN string, listenerStatus *courier.ListenerStatus) (*elbv2.CreateRuleInput, error) {
+	// Create rule and set it to l.Rule
+	ruleConditions := []*elbv2.RuleCondition{
+		//	{
+		//		Field:                   nil,
+		//		HostHeaderConfig:        nil,
+		//		HttpHeaderConfig:        nil,
+		//		HttpRequestMethodConfig: nil,
+		//		PathPatternConfig:       nil,
+		//		QueryStringConfig:       nil,
+		//		SourceIpConfig:          nil,
+		//		Values:                  nil,
+		//	}
+	}
+
+	// See this for how rule conditions should be composed:
+	// https://cloudaffaire.com/aws-application-load-balancer-listener-rules-and-advance-routing-options
+	// (I found it much readable and helpful than the official reference doc
+
+	if len(listenerStatus.Hosts) > 0 {
+		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+			Field: aws.String("host-header"),
+			HostHeaderConfig: &elbv2.HostHeaderConditionConfig{
+				Values: aws.StringSlice(listenerStatus.Hosts),
+			},
+		})
+	}
+
+	if len(listenerStatus.PathPatterns) > 0 {
+		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+			Field: aws.String("path-pattern"),
+			PathPatternConfig: &elbv2.PathPatternConditionConfig{
+				Values: aws.StringSlice(listenerStatus.PathPatterns),
+			},
+		})
+	}
+
+	if len(listenerStatus.Methods) > 0 {
+		methods := make([]string, len(listenerStatus.Methods))
+
+		for i, m := range listenerStatus.Methods {
+			methods[i] = strings.ToUpper(m)
+		}
+
+		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+			Field: aws.String("http-request-method"),
+			HttpRequestMethodConfig: &elbv2.HttpRequestMethodConditionConfig{
+				Values: aws.StringSlice(methods),
+			},
+		})
+	}
+
+	if len(listenerStatus.SourceIPs) > 0 {
+		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+			Field: aws.String("source-ip"),
+			SourceIpConfig: &elbv2.SourceIpConditionConfig{
+				Values: aws.StringSlice(listenerStatus.SourceIPs),
+			},
+		})
+	}
+
+	if len(listenerStatus.Headers) > 0 {
+		for name, values := range listenerStatus.Headers {
+			ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+				Field: aws.String("http-header"),
+				HttpHeaderConfig: &elbv2.HttpHeaderConditionConfig{
+					HttpHeaderName: aws.String(name),
+					Values:         aws.StringSlice(values),
+				},
+			})
+		}
+	}
+
+	if len(listenerStatus.QueryStrings) > 0 {
+		var vs []*elbv2.QueryStringKeyValuePair
+
+		for k, v := range listenerStatus.QueryStrings {
+			vs = append(vs, &elbv2.QueryStringKeyValuePair{
+				Key:   aws.String(k),
+				Value: aws.String(v),
+			})
+		}
+		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
+			Field: aws.String("query-string"),
+			QueryStringConfig: &elbv2.QueryStringConditionConfig{
+				Values: vs,
+			},
+		})
+	}
+
+	createRuleInput := &elbv2.CreateRuleInput{
+		Actions: []*elbv2.Action{
+			{
+				ForwardConfig: &elbv2.ForwardActionConfig{
+					TargetGroupStickinessConfig: nil,
+					TargetGroups: []*elbv2.TargetGroupTuple{
+						{
+							TargetGroupArn: listenerStatus.DesiredTG.TargetGroupArn,
+							Weight:         aws.Int64(100),
+						},
+					},
+				},
+				TargetGroupArn: listenerStatus.DesiredTG.TargetGroupArn,
+				Type:           aws.String("forward"),
+			},
+		},
+		Priority:    aws.Int64(listenerStatus.RulePriority),
+		Conditions:  ruleConditions,
+		ListenerArn: aws.String(listenerARN),
+	}
+
+	return createRuleInput, nil
 }

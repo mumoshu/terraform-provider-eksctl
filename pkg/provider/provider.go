@@ -1,4 +1,4 @@
-package tfeksctl
+package provider
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -16,7 +16,8 @@ func Provider() terraform.ResourceProvider {
 		ResourcesMap: map[string]*schema.Resource{
 			"eksctl_cluster":           cluster.Resource(),
 			"eksctl_iamserviceaccount": iamserviceaccount.Resource(),
+			"eksctl_courier_alb":       ResourceALB(),
 		},
-		ConfigureFunc: configureProvider(),
+		ConfigureFunc: providerConfigure(),
 	}
 }

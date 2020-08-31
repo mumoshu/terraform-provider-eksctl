@@ -240,6 +240,55 @@ EOS
 }
 ```
 
+## Extras
+
+The following resources are useful but may be extracted out of this provider in the future
+
+- `courier_alb_listener` resource is used to declaratively and gradually shift traffic among given target groups
+
+### courier_alb
+
+```
+resource "eksctl_courier_alb" "my_alb_courier" {
+  listener_arn = "<alb listener arn>"
+
+  priority = "10"
+  
+  destinaton {
+    target_group_arn = "<target group arn current>"
+
+    weight = 0
+  }
+
+  destinaton {
+    target_group_arn = "<target group arn next>"
+    weight = 100
+  }
+
+  cloudwatch_metric {
+    name = "http_errors_cw"
+
+    # it will query from <now - 60 sec> to now, every 60 sec
+    interval = "1m"
+
+    max = 50
+
+    query = "<QUERY>"
+  }
+
+  datadog_metric {
+    name = "http_errors_dd"
+
+    # it will query from <now - 60 sec> to now, every 60 sec
+    interval = "1m"
+
+    max = 50
+
+    query = "<QUERY>"
+  }
+}
+```
+
 ## The Goal
 
 My goal for this project is to allow automated canary deployment of a whole K8s cluster via single `terraform apply` run.
