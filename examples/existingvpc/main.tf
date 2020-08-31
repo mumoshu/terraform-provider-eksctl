@@ -595,4 +595,7 @@ resource "helmfile_release_set" "mystack1" {
   environment_variables = {
     KUBECONFIG = eksctl_cluster.primary.kubeconfig_path
   }
+  depends_on = [
+    eksctl_cluster.primary,
+  ]
 }

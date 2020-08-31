@@ -208,6 +208,7 @@ There's a bunch more settings that helps the app to stay highly available while 
 - `kubernetes_resource_deletion_before_destroy`
 - `alb_attachment`
 - `pods_readiness_check`
+- Cluster canary deployment
 
 It's also highly recommended to include `git` configuration and use `eksctl` which includes https://github.com/weaveworks/eksctl/pull/2274 in order to install Flux in an unattended way, so that the cluster has everything deployed on launch. Otherwise blue-green deployments of the cluster doesn't make sense.
 
@@ -240,13 +241,15 @@ EOS
 }
 ```
 
-## Extras
+## Cluster canary deployment
 
-The following resources are useful but may be extracted out of this provider in the future
+`courier_alb` resource is used to declaratively and gradually shift traffic among given target groups.
 
-- `courier_alb_listener` resource is used to declaratively and gradually shift traffic among given target groups
+In combination with standard `alb_lb_*` resources and two `eksctl_cluster`, you can conduct a "canary deployment" of the cluster.
 
-### courier_alb
+> This resource is useful but may be extracted out of this provider in the future.
+
+A `courier_alb` looks like the below:
 
 ```
 resource "eksctl_courier_alb" "my_alb_courier" {
@@ -288,6 +291,166 @@ resource "eksctl_courier_alb" "my_alb_courier" {
   }
 }
 ```
+
+Let's say you want to serve your web service on port 80 of your internet-facing ALB. You'll start with a `alb`, `alb_listener`, and two `alb_target_group`s and two `eksctl-cluster`.
+
+The below is the initial deployment with two clusters `blue` and `green`, where the traffic is 100% forwarded to `blue` and `helmfile` is used to deploy Helm charts to `blue`:
+
+```hcl-terraform
+resource "aws_alb" "alb" {
+  name = "alb"
+  security_groups = [
+    aws_security_group.public_alb.id
+  ]
+  subnets = module.vpc.public_subnets
+  internal = false
+  enable_deletion_protection = false
+}
+
+resource "aws_alb_listener" "mysvc" {
+  port = 80
+  protocol = "HTTP"
+  load_balancer_arn = aws_alb.alb.arn
+  default_action {
+    type = "fixed-response"
+    fixed_response {
+      content_type = "text/plain"
+      status_code = "404"
+      message_body = "Nothing here"
+    }
+  }
+}
+
+resource "aws_lb_target_group" "blue" {
+  name = "tg1"
+  port = 30080
+  protocol = "HTTP"
+  vpc_id = module.vpc.vpc_id
+}
+
+resource "aws_lb_target_group" "green" {
+  name = "tg2"
+  port = 30080
+  protocol = "HTTP"
+  vpc_id = module.vpc.vpc_id
+}
+
+resource "eksctl_cluster" "blue" {
+  name = "blue"
+  region = "us-east-2"
+  api_version = "eksctl.io/v1alpha5"
+  version = "1.15"
+  vpc_id = module.vpc.vpc_id
+  spec = <<EOS
+nodeGroups:
+  - name: ng2
+    instanceType: m5.large
+    desiredCapacity: 1
+    targetGroupARNs:
+    - ${aws_lb_target_group.blue.arn}
+EOS
+}
+
+resource "eksctl_cluster" "green" {
+  name = "green"
+  region = "us-east-2"
+  api_version = "eksctl.io/v1alpha5"
+  version = "1.16"
+  vpc_id = module.vpc.vpc_id
+  spec = <<EOS
+nodeGroups:
+  - name: ng2
+    instanceType: m5.large
+    desiredCapacity: 1
+    targetGroupARNs:
+    - ${aws_lb_target_group.green.arn}
+EOS
+}
+
+resource "helmfile_release_set" "myapps" {
+  content = file("./helmfile.yaml")
+  environment = "default"
+  environment_variables = {
+    KUBECONFIG = eksctl_cluster.blue.kubeconfig_path
+  }
+  depends_on = [
+    eksctl_cluster.blue
+  ]
+}
+
+resource "eksctl_courier_alb" "my_alb_courier" {
+  listener_arn = aws_alb_listener.mysvc.arn
+
+  priority = "11"
+
+  destination {
+    target_group_arn = aws_lb_target_group.blue.arn
+
+    weight = 100
+  }
+
+  destination {
+    target_group_arn = aws_lb_target_group.green.arn
+    weight = 0
+  }
+
+  depends_on = [
+    helmfile_release_set.myapps
+  ]
+}
+```
+
+Wanna make a critical change to `blue`, without fearing downtime?
+
+Rethink and update `green` instead, while changing `courier_alb`'s `weight` so that the traffic is forwarded to `green` only after
+the cluster is successfully updated:
+
+```hcl-terraform
+
+resource "helmfile_release_set" "myapps" {
+  content = file("./helmfile.yaml")
+  environment = "default"
+  environment_variables = {
+    # It was `eksctl_cluster.blue.kubeconfig_path` before
+    KUBECONFIG = eksctl_cluster.green.kubeconfig_path
+  }
+  depends_on = [
+    # This was eksctl_cluster.blue before the update
+    eksctl_cluster.green
+  ]
+}
+
+resource "eksctl_courier_alb" "my_alb_courier" {
+  listener_arn = aws_alb_listener.mysvc.arn
+
+  priority = "11"
+
+  destination {
+    target_group_arn = aws_lb_target_group.blue.arn
+    # This was 100 before the update
+    weight = 0
+  }
+
+  destination {
+    target_group_arn = aws_lb_target_group.green.arn
+    # This was 0 before the update
+    weight = 100
+  }
+
+  depends_on = [
+    helmfile_release_set.myapps
+  ]
+}
+```
+
+This instructs Terraform to:
+
+- Update `eksctl_cluster.green`
+- Run `helmfile` against the `green` cluster to have all the Helm charts deployed
+- Gradually shift the traffic from the previous `blue` cluster to the updated `green` cluster.
+
+In addition, you can add `cloudwatch_metric`s and/or `datadog_metric`s to `courier_alb`'s `destinations`, so that the provider runs canary analysis to determine
+whether it should continue shifting the traffic.
 
 ## The Goal
 
