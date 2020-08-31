@@ -111,4 +111,3 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts co
 
 	return nil
 }
-

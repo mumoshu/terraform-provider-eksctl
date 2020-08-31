@@ -254,13 +254,13 @@ resource "eksctl_courier_alb" "my_alb_courier" {
 
   priority = "10"
   
-  destinaton {
+  destination {
     target_group_arn = "<target group arn current>"
 
     weight = 0
   }
 
-  destinaton {
+  destination {
     target_group_arn = "<target group arn next>"
     weight = 100
   }

@@ -2,10 +2,15 @@ package cluster
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"io/ioutil"
 	"log"
+	"os"
 	"os/exec"
+	"strings"
+	"time"
 )
 
 func createCluster(d *schema.ResourceData) (*ClusterSet, error) {
@@ -32,6 +37,10 @@ func createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 		return nil, err
 	}
 
+	if err := doWriteKubeconfig(d, string(set.ClusterName), cluster.Region); err != nil {
+		return nil, err
+	}
+
 	if err := doApplyKubernetesManifests(cluster, id); err != nil {
 		return nil, err
 	}
@@ -45,4 +54,60 @@ func createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	}
 
 	return set, nil
+}
+
+func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
+	var path string
+
+	if v := d.Get(KeyKubeconfigPath); v != nil {
+		path = v.(string)
+	}
+
+	if path == "" {
+		kubeconfig, err := ioutil.TempFile(os.TempDir(), "tf-eksctl-kubeconfig")
+		if err != nil {
+			return fmt.Errorf("failed generating temporary kubecongig: %w", err)
+		}
+		_ = kubeconfig.Close()
+
+		path = kubeconfig.Name()
+
+		d.Set(KeyKubeconfigPath, path)
+	}
+
+	cmd := exec.Command(d.Get(KeyBin).(string), "utils", "write-kubeconfig", "--cluster", clusterName, "--region", region)
+	cmd.Env = append(cmd.Env, os.Environ()...)
+	cmd.Env = append(cmd.Env, "KUBECONFIG="+path)
+
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed running %s %s: %vw: COMBINED OUTPUT:\n%s", cmd.Path, strings.Join(cmd.Args, " "), err, string(out))
+	}
+
+	log.Printf("Ran `%s %s` with KUBECONFIG=%s", cmd.Path, strings.Join(cmd.Args, " "), path)
+
+	kubectlBin := "kubectl"
+	if v := d.Get(KeyKubectlBin); v != nil {
+		s := v.(string)
+		if s != "" {
+			kubectlBin = s
+		}
+	}
+
+	retries := 5
+	retryDelay := 5 * time.Second
+	for i := 0; i < retries; i++ {
+		kubectlVersion := exec.Command(kubectlBin, "version")
+		kubectlVersion.Env = append(cmd.Env, os.Environ()...)
+		kubectlVersion.Env = append(cmd.Env, "KUBECONFIG="+path)
+
+		out, err := kubectlVersion.CombinedOutput()
+		if err == nil {
+			break
+		}
+
+		log.Printf("Retrying kubectl version error with KUBECONFIG=%s: %v: COMBINED OUTPUT:\n%s", path, err, string(out))
+		time.Sleep(retryDelay)
+	}
+
+	return nil
 }

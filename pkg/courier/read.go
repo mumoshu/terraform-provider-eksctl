@@ -127,4 +127,3 @@ func LoadMetrics(metrics []interface{}) ([]Metric, error) {
 
 	return result, nil
 }
-

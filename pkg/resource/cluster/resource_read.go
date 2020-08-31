@@ -2,11 +2,10 @@ package cluster
 
 import (
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 )
 
-func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
+func ReadCluster(d Read) (*Cluster, error) {
 	a := Cluster{}
 	a.EksctlBin = d.Get(KeyBin).(string)
 	a.KubectlBin = d.Get(KeyKubectlBin).(string)
@@ -127,4 +126,3 @@ func ReadCluster(d *schema.ResourceData) (*Cluster, error) {
 
 	return &a, nil
 }
-

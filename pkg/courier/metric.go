@@ -10,4 +10,3 @@ type Metric struct {
 	Min      *float64
 	Interval time.Duration
 }
-

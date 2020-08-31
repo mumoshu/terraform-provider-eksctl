@@ -42,4 +42,3 @@ func ListerStatusToTemplateData(l ListenerStatus) interface{} {
 
 	return data
 }
-

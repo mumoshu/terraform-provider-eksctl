@@ -8,4 +8,3 @@ type CanaryOpts struct {
 	Region                    string
 	ClusterName               string
 }
-

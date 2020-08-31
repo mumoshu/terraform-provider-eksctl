@@ -51,4 +51,3 @@ func SetDesiredTGTrafficPercentage(svc elbv2iface.ELBV2API, l ListenerStatus, p 
 
 	return nil
 }
-

@@ -5,7 +5,35 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-func readCluster(d *schema.ResourceData) error {
+type Read interface {
+	Get(string) interface{}
+}
+
+type ReadWrite interface {
+	Read
+
+	Id() string
+
+	Set(string, interface{}) error
+}
+
+type DiffReadWrite struct {
+	D *schema.ResourceDiff
+}
+
+func (d *DiffReadWrite) Get(k string) interface{} {
+	return d.D.Get(k)
+}
+
+func (d *DiffReadWrite) Set(k string, v interface{}) error {
+	return d.D.SetNew(k, v)
+}
+
+func (d *DiffReadWrite) Id() string {
+	return d.D.Id()
+}
+
+func readCluster(d ReadWrite) error {
 	clusterNamePrefix := d.Get("name").(string)
 	region := d.Get("region").(string)
 
@@ -22,6 +50,15 @@ func readCluster(d *schema.ResourceData) error {
 
 	if err := d.Set(KeyTargetGroupARNs, v); err != nil {
 		return fmt.Errorf("setting resource data value for key %v: %w", KeyTargetGroupARNs, err)
+	}
+
+	c, err := ReadCluster(d)
+	if err != nil {
+		return err
+	}
+
+	if err := doWriteKubeconfig(d, fmt.Sprintf("%s-%s", c.Name, d.Id()), c.Region); err != nil {
+		return err
 	}
 
 	return nil

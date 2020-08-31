@@ -112,4 +112,3 @@ func (a *Analyzer) Analyze(data interface{}) error {
 
 	return nil
 }
-

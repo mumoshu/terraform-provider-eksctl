@@ -59,6 +59,23 @@ func Resource() *schema.Resource {
 
 			return nil
 		},
+		CustomizeDiff: func(d *schema.ResourceDiff, meta interface{}) error {
+			_ = readCluster(&DiffReadWrite{D: d})
+
+			v := d.Get(KeyKubeconfigPath)
+
+			var kp string
+
+			if v != nil {
+				kp = v.(string)
+			}
+
+			if d.Id() == "" || kp == "" {
+				d.SetNewComputed(KeyKubeconfigPath)
+			}
+
+			return nil
+		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
 			// TODO shift back 100% traffic to the current cluster before update so that you can use `terraform apply` to
 			// cancel previous canary deployment that hang in the middle of the process.
@@ -172,6 +189,10 @@ func Resource() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "kubectl",
+			},
+			KeyKubeconfigPath: {
+				Type:     schema.TypeString,
+				Computed: true,
 			},
 			// spec is the string containing the part of eksctl cluster.yaml
 			// Over time the provider adds HCL-native syntax for any of cluster.yaml items.

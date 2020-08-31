@@ -29,4 +29,3 @@ type ALBAttachment struct {
 	QueryStrings map[string]string
 	Metrics      []Metric
 }
-

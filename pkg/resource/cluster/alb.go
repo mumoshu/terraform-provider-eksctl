@@ -10,6 +10,7 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -236,16 +237,23 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 		RULES:
 			for i := range r.Rules {
 				r := r.Rules[i]
-				// Find the specific rule and set it to target rule
+				p := strconv.Itoa(int(listenerStatus.RulePriority))
+				priorityMatched := r.Priority != nil && *r.Priority == p
+				var tgNameMatched bool
 				if len(r.Actions) > 0 && r.Actions[0].ForwardConfig != nil && len(r.Actions[0].ForwardConfig.TargetGroups) > 0 {
 					for _, tg := range r.Actions[0].ForwardConfig.TargetGroups {
 						primaryTGName := *tg.TargetGroupArn
 						primaryTGNameFromTFState := *listenerStatus.CurrentTG.TargetGroupArn
 						if primaryTGName == primaryTGNameFromTFState {
-							targetRuleBeforeUpdate = r
-							break RULES
+							tgNameMatched = true
+							break
 						}
 					}
+				}
+
+				if priorityMatched || tgNameMatched {
+					targetRuleBeforeUpdate = r
+					break RULES
 				}
 			}
 		}

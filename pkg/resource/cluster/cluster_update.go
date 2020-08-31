@@ -117,6 +117,12 @@ func updateCluster(d *schema.ResourceData) error {
 		}
 	}
 
+	writeKubeconfig := func() func() error {
+		return func() error {
+			return doWriteKubeconfig(d, string(set.ClusterName), cluster.Region)
+		}
+	}
+
 	attachNodeGroupsToTargetGroups := func() func() error {
 		return func() error {
 			return doAttachAutoScalingGroupsToTargetGroups(set)
@@ -142,6 +148,7 @@ func updateCluster(d *schema.ResourceData) error {
 		applyKubernetesManifests(id),
 		attachNodeGroupsToTargetGroups(),
 		checkPodsReadiness(id),
+		writeKubeconfig(),
 	}
 
 	for _, t := range tasks {

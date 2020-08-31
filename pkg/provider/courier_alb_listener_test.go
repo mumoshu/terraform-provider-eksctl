@@ -88,9 +88,7 @@ func TestAccCourierALB_create(t *testing.T) {
 		switch op {
 		case "Action=DescribeRules&ListenerArn=listener_arn&Version=2015-12-01":
 			resBody, err = json.Marshal(&elbv2.DescribeRulesOutput{
-				Rules: []*elbv2.Rule{
-
-				},
+				Rules: []*elbv2.Rule{},
 			})
 		case "Action=CreateRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=0&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=100&Actions.member.1.Type=forward&Conditions=&ListenerArn=listener_arn&Priority=10&Version=2015-12-01":
 			params := &elbv2.CreateRuleOutput{
