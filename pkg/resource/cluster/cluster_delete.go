@@ -8,10 +8,10 @@ import (
 	"os/exec"
 )
 
-func deleteCluster(d *schema.ResourceData) error {
+func (m *Manager) deleteCluster(d *schema.ResourceData) error {
 	log.Printf("[DEBUG] deleting eksctl cluster with id %q", d.Id())
 
-	set, err := PrepareClusterSet(d)
+	set, err := m.PrepareClusterSet(d)
 	if err != nil {
 		return err
 	}
@@ -37,9 +37,7 @@ func deleteCluster(d *schema.ResourceData) error {
 		return err
 	}
 
-	clusterName := getClusterName(cluster, d.Id())
-
-	if err := deleteVPCResourceTags(cluster, clusterName); err != nil {
+	if err := deleteVPCResourceTags(cluster, set.ClusterName); err != nil {
 		return err
 	}
 

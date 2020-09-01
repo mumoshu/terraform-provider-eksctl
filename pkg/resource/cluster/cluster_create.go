@@ -13,12 +13,12 @@ import (
 	"time"
 )
 
-func createCluster(d *schema.ResourceData) (*ClusterSet, error) {
+func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	id := newClusterID()
 
 	log.Printf("[DEBUG] creating eksctl cluster with id %q", id)
 
-	set, err := PrepareClusterSet(d, id)
+	set, err := m.PrepareClusterSet(d, id)
 	if err != nil {
 		return nil, err
 	}

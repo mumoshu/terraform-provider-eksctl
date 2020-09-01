@@ -174,7 +174,7 @@ resource "aws_lb_target_group" "tg2" {
   vpc_id = module.vpc.vpc_id
 }
 
-resource "eksctl_cluster" "primary" {
+resource "eksctl_cluster_deployment" "primary" {
   eksctl_bin = "eksctl-dev"
   name = "existingvpc2"
   region = "us-east-2"
@@ -382,7 +382,7 @@ EOS
 }
 
 
-resource "eksctl_cluster" "green" {
+resource "eksctl_cluster_deployment" "green" {
   eksctl_bin = "eksctl-dev"
   name = "green"
   region = "us-east-2"
@@ -563,6 +563,73 @@ EOS
     module.vpc]
 }
 
+resource "eksctl_cluster" "red" {
+  eksctl_bin = "eksctl-dev"
+  name = "red"
+  region = "us-east-2"
+  api_version = "eksctl.io/v1alpha5"
+  version = "1.16"
+  vpc_id = module.vpc.vpc_id
+  spec = <<EOS
+
+nodeGroups:
+  - name: ng2
+    instanceType: m5.large
+    desiredCapacity: 1
+    targetGroupARNs:
+    - ${aws_lb_target_group.tg2.arn}
+    securityGroups:
+      attachIDs:
+      - ${aws_security_group.public_alb_private_backend.id}
+
+iam:
+  withOIDC: true
+  serviceAccounts: []
+
+vpc:
+  cidr: "${module.vpc.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
+  subnets:
+    # must provide 'private' and/or 'public' subnets by availibility zone as shown
+    private:
+      ${module.vpc.azs[0]}:
+        id: "${module.vpc.private_subnets[0]}"
+        cidr: "${module.vpc.private_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
+      ${module.vpc.azs[1]}:
+        id: "${module.vpc.private_subnets[1]}"
+        cidr: "${module.vpc.private_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
+      ${module.vpc.azs[2]}:
+        id: "${module.vpc.private_subnets[2]}"
+        cidr: "${module.vpc.private_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
+    public:
+      ${module.vpc.azs[0]}:
+        id: "${module.vpc.public_subnets[0]}"
+        cidr: "${module.vpc.public_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
+      ${module.vpc.azs[1]}:
+        id: "${module.vpc.public_subnets[1]}"
+        cidr: "${module.vpc.public_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
+      ${module.vpc.azs[2]}:
+        id: "${module.vpc.public_subnets[2]}"
+        cidr: "${module.vpc.public_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
+
+git:
+  repo:
+    url: "git@github.com:mumoshu/gitops-demo.git"
+    branch: master
+    fluxPath: "flux/"
+    user: "gitops"
+    email: "gitops@myorg.com"
+    ## Uncomment this when `commitOperatorManifests: true`
+    #privateSSHKeyPath: /path/to/your/ssh/key
+  operator:
+    commitOperatorManifests: false
+    namespace: "flux"
+    readOnly: true
+EOS
+
+  depends_on = [
+    module.vpc]
+}
+
 resource "eksctl_courier_alb" "my_alb_courier" {
   listener_arn = aws_alb_listener.podinfo.arn
 
@@ -580,22 +647,22 @@ resource "eksctl_courier_alb" "my_alb_courier" {
   }
 
   depends_on = [
-    eksctl_cluster.primary,
+    eksctl_cluster_deployment.primary,
     helmfile_release_set.mystack1
   ]
 }
 
 output "kubeconfig_path" {
-  value = eksctl_cluster.primary.kubeconfig_path
+  value = eksctl_cluster_deployment.primary.kubeconfig_path
 }
 
 resource "helmfile_release_set" "mystack1" {
   content = file("./helmfile.yaml")
   environment = "default"
   environment_variables = {
-    KUBECONFIG = eksctl_cluster.primary.kubeconfig_path
+    KUBECONFIG = eksctl_cluster_deployment.primary.kubeconfig_path
   }
   depends_on = [
-    eksctl_cluster.primary,
+    eksctl_cluster_deployment.primary,
   ]
 }

@@ -12,6 +12,10 @@ import (
 )
 
 func doAttachAutoScalingGroupsToTargetGroups(set *ClusterSet) error {
+	if len(set.ListenerStatuses) == 0 {
+		return nil
+	}
+
 	cfn := cloudformation.New(awsclicompat.NewSession(set.Cluster.Region))
 
 	var stackSummaries []*cloudformation.StackSummary

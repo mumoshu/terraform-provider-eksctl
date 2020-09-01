@@ -9,7 +9,149 @@ import (
 	"log"
 )
 
-func Resource() *schema.Resource {
+func ResourceCluster() *schema.Resource {
+	m := &Manager{
+		DisableClusterNameSuffix: true,
+	}
+	return &schema.Resource{
+		Create: func(d *schema.ResourceData, meta interface{}) error {
+			set, err := m.createCluster(d)
+			if err != nil {
+				return err
+			}
+
+			d.SetId(set.ClusterID)
+
+			return nil
+		},
+		CustomizeDiff: func(d *schema.ResourceDiff, meta interface{}) error {
+			_ = readCluster(&DiffReadWrite{D: d})
+
+			v := d.Get(KeyKubeconfigPath)
+
+			var kp string
+
+			if v != nil {
+				kp = v.(string)
+			}
+
+			if d.Id() == "" || kp == "" {
+				d.SetNewComputed(KeyKubeconfigPath)
+			}
+
+			return nil
+		},
+		Update: func(d *schema.ResourceData, meta interface{}) error {
+			log.Printf("udapting existing cluster...")
+
+			if err := m.updateCluster(d); err != nil {
+				return err
+			}
+
+			return nil
+		},
+		Delete: func(d *schema.ResourceData, meta interface{}) error {
+			if err := m.deleteCluster(d); err != nil {
+				return err
+			}
+
+			d.SetId("")
+
+			return nil
+		},
+		Read: func(d *schema.ResourceData, meta interface{}) error {
+			return readCluster(d)
+		},
+		Schema: map[string]*schema.Schema{
+			// "ForceNew" fields
+			//
+			// the provider does not support zero-downtime updates of these fields so they are set to `ForceNew`,
+			// which results recreating cluster without traffic management.
+			KeyRegion: {
+				Type:        schema.TypeString,
+				Required:    true,
+				ForceNew:    true,
+				DefaultFunc: schema.EnvDefaultFunc("AWS_DEFAULT_REGION", nil),
+			},
+			KeyName: {
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+			},
+			KeyVPCID: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+			// The below fields can be updated with `terraform apply`, without cluster recreation
+			KeyAPIVersion: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  DefaultAPIVersion,
+			},
+			// TODO EksctlVersion: {...}
+
+			// Version is the K8s version (e.g. 1.15, 1.16) that EKS supports
+			// Changing this results in zero-downtime blue-green cluster upgrade.
+			KeyVersion: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  DefaultVersion,
+			},
+			// revision is the manually bumped revision number of the cluster.
+			// Increment this so that any changes made to `spec` are deployed via a blue-green cluster deployment.
+			KeyRevision: {
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			// To allow upgrading eksctl and kubectl binaries without upgrading the provider,
+			// you can specify the path to the binary.
+			KeyBin: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "eksctl",
+			},
+			KeyKubectlBin: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "kubectl",
+			},
+			KeyKubeconfigPath: {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			// spec is the string containing the part of eksctl cluster.yaml
+			// Over time the provider adds HCL-native syntax for any of cluster.yaml items.
+			// Until then, this is the primary place you configure the cluster as you like.
+			KeySpec: {
+				Type:     schema.TypeString,
+				Required: true,
+				ValidateFunc: func(v interface{}, name string) ([]string, []error) {
+					s := v.(string)
+
+					configForVaildation := EksctlClusterConfig{
+						Rest: map[string]interface{}{},
+					}
+					if err := yaml.Unmarshal([]byte(s), &configForVaildation); err != nil {
+						return nil, []error{err}
+					}
+
+					if configForVaildation.VPC.ID != "" {
+						return nil, []error{fmt.Errorf("validating attribute \"spec\": vpc.id must not be set within the spec yaml. use \"vpc_id\" attribute instead, becaues the provider uses it for generating the final eksctl cluster config yaml")}
+					}
+
+					return nil, nil
+				},
+			},
+			resource.KeyOutput: {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+		},
+	}
+}
+
+func ResourceClusterDeployment() *schema.Resource {
 	ALBSupportedProtocols := []string{"http", "https", "tcp", "tls", "udp", "tcp_udp"}
 
 	metrics := &schema.Schema{
@@ -48,9 +190,11 @@ func Resource() *schema.Resource {
 		},
 	}
 
+	m := &Manager{}
+
 	return &schema.Resource{
 		Create: func(d *schema.ResourceData, meta interface{}) error {
-			set, err := createCluster(d)
+			set, err := m.createCluster(d)
 			if err != nil {
 				return err
 			}
@@ -96,7 +240,7 @@ func Resource() *schema.Resource {
 			if k8sVerCurrent != k8sVerDesired || revisionCurrent != revisionDesired {
 				log.Printf("creating new cluster...")
 
-				set, err := createCluster(d)
+				set, err := m.createCluster(d)
 				if err != nil {
 					return err
 				}
@@ -105,7 +249,7 @@ func Resource() *schema.Resource {
 					return err
 				}
 
-				if err := deleteCluster(d); err != nil {
+				if err := m.deleteCluster(d); err != nil {
 					return err
 				}
 
@@ -118,14 +262,14 @@ func Resource() *schema.Resource {
 
 			log.Printf("udapting existing cluster...")
 
-			if err := updateCluster(d); err != nil {
+			if err := m.updateCluster(d); err != nil {
 				return err
 			}
 
 			return nil
 		},
 		Delete: func(d *schema.ResourceData, meta interface{}) error {
-			if err := deleteCluster(d); err != nil {
+			if err := m.deleteCluster(d); err != nil {
 				return err
 			}
 

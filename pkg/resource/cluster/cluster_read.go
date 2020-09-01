@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"log"
 )
 
 type Read interface {
@@ -49,7 +50,7 @@ func readCluster(d ReadWrite) error {
 	}
 
 	if err := d.Set(KeyTargetGroupARNs, v); err != nil {
-		return fmt.Errorf("setting resource data value for key %v: %w", KeyTargetGroupARNs, err)
+		log.Printf("setting resource data value for key %v: %w", KeyTargetGroupARNs, err)
 	}
 
 	c, err := ReadCluster(d)

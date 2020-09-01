@@ -111,7 +111,11 @@ type NodeGroup struct {
 	Rest            map[string]interface{} `yaml:",inline"`
 }
 
-func PrepareClusterSet(d *schema.ResourceData, optNewId ...string) (*ClusterSet, error) {
+type Manager struct {
+	DisableClusterNameSuffix bool
+}
+
+func (m *Manager) PrepareClusterSet(d *schema.ResourceData, optNewId ...string) (*ClusterSet, error) {
 	a, err := ReadCluster(d)
 	if err != nil {
 		return nil, err
@@ -162,7 +166,7 @@ func PrepareClusterSet(d *schema.ResourceData, optNewId ...string) (*ClusterSet,
 		return nil, errors.New("Missing Resource ID. This must be a bug!")
 	}
 
-	clusterName := fmt.Sprintf("%s-%s", a.Name, id)
+	clusterName := m.getClusterName(a, id)
 
 	listenerStatuses, err := planListenerChanges(a, d.Id(), newId)
 	if err != nil {
@@ -236,9 +240,10 @@ metadata:
 
 	a.VPCID = c.VPC.ID
 
+
 	return &ClusterSet{
 		ClusterID:        id,
-		ClusterName:      getClusterName(a, id),
+		ClusterName:      clusterName,
 		Cluster:          a,
 		ClusterConfig:    mergedClusterConfig,
 		ListenerStatuses: listenerStatuses,
@@ -246,7 +251,16 @@ metadata:
 			CanaryAdvancementInterval: 5 * time.Second,
 			CanaryAdvancementStep:     5,
 			Region:                    a.Region,
-			ClusterName:               string(getClusterName(a, id)),
+			ClusterName:               string(clusterName),
 		},
 	}, nil
+}
+
+type ClusterName string
+
+func (m *Manager) getClusterName(cluster *Cluster, id string) ClusterName {
+	if m.DisableClusterNameSuffix {
+		return ClusterName(cluster.Name)
+	}
+	return ClusterName(fmt.Sprintf("%s-%s", cluster.Name, id))
 }

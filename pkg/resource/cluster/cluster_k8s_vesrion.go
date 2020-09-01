@@ -19,7 +19,9 @@ type LiveClusterInfo struct {
 func getLiveClusterInfo(d *schema.ResourceData) (*LiveClusterInfo, error) {
 	log.Printf("[DEBUG] getting eksctl cluster k8s version with id %q", d.Id())
 
-	set, err := PrepareClusterSet(d)
+	m := &Manager{}
+
+	set, err := m.PrepareClusterSet(d)
 	if err != nil {
 		return nil, err
 	}

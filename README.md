@@ -40,9 +40,16 @@ There is nothing to configure for the provider, so you firstly declare the provi
 provider "eksctl" {}
 ```
 
-You use `eksctl_cluster` resource to CRUD your cluster from Terraform.
+You use `eksctl_cluster` and `eksctl_cluster_deployment` resources to CRUD your clusters from Terraform.
 
-On `terraform apply`, the provider runs `eksctl create`, `eksctl update` and `eksctl delete` depending on the situation. It uses `eksctl delete nodegroup --drain` for deleting nodegroups for high availability.
+Usually, the former is what you want. It just runs `eksctl` to manage the cluster as exactly as you have declared in your `tf` file.
+
+The latter is, as its name says, for managing a set of `eksctl` clusters in opinionated way.
+
+On `terraform apply`:
+
+- For `eksctl_cluster`, the provider runs a series of `eksctl update [RESOURCE]`. It uses `eksctl delete nodegroup --drain` for deleting nodegroups for high availability.
+- For `eksctl_cluster_deployment`, the provider runs `eksctl create` abd a series of `eksctl update [RESOURCE]` and `eksctl delete` depending on the situation. It uses `eksctl delete nodegroup --drain` for deleting nodegroups for high availability.
 
 On `terraform destroy`, the provider runs `eksctl delete`
 
@@ -215,6 +222,8 @@ It's also highly recommended to include `git` configuration and use `eksctl` whi
 Please see the [existingvpc](/examples/existingvpc) example to see how a fully configured eksctl_cluster resource should look like, and the below references for details of each setting.
 ### Delete Kubernetes resources before destroy
 
+> This option is available only within `eksctl_cluster_deployment` resource
+
 Use `kubernetes_resource_deletion_before_destroy` blocks.
 
 It is useful for e.g.:
@@ -223,7 +232,7 @@ It is useful for e.g.:
 - Stopping pods whose IP addresses are exposed via a headless service and external-dns before the cluster being down, so that stale pod IPs won't remain in the serviced discovery system
 
 ```hcl
-resource "eksctl_cluster" "primary" {
+resource "eksctl_cluster_deployment" "primary" {
   name = "primary"
   region = "us-east-2"
 

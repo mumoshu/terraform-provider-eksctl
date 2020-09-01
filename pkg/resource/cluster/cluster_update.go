@@ -10,10 +10,10 @@ import (
 	"strings"
 )
 
-func updateCluster(d *schema.ResourceData) error {
+func (m *Manager) updateCluster(d *schema.ResourceData) error {
 	log.Printf("[DEBUG] updating eksctl cluster with id %q", d.Id())
 
-	set, err := PrepareClusterSet(d)
+	set, err := m.PrepareClusterSet(d)
 	if err != nil {
 		return err
 	}
