@@ -25,7 +25,7 @@ func ResourceCluster() *schema.Resource {
 			return nil
 		},
 		CustomizeDiff: func(d *schema.ResourceDiff, meta interface{}) error {
-			_ = readCluster(&DiffReadWrite{D: d})
+			_ = m.readCluster(&DiffReadWrite{D: d})
 
 			v := d.Get(KeyKubeconfigPath)
 
@@ -60,7 +60,7 @@ func ResourceCluster() *schema.Resource {
 			return nil
 		},
 		Read: func(d *schema.ResourceData, meta interface{}) error {
-			return readCluster(d)
+			return m.readCluster(d)
 		},
 		Schema: map[string]*schema.Schema{
 			// "ForceNew" fields
@@ -204,7 +204,7 @@ func ResourceClusterDeployment() *schema.Resource {
 			return nil
 		},
 		CustomizeDiff: func(d *schema.ResourceDiff, meta interface{}) error {
-			_ = readCluster(&DiffReadWrite{D: d})
+			_ = m.readCluster(&DiffReadWrite{D: d})
 
 			v := d.Get(KeyKubeconfigPath)
 
@@ -278,7 +278,7 @@ func ResourceClusterDeployment() *schema.Resource {
 			return nil
 		},
 		Read: func(d *schema.ResourceData, meta interface{}) error {
-			return readCluster(d)
+			return m.readCluster(d)
 		},
 		Schema: map[string]*schema.Schema{
 			// "ForceNew" fields

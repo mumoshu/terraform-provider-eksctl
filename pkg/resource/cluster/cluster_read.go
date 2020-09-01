@@ -34,7 +34,7 @@ func (d *DiffReadWrite) Id() string {
 	return d.D.Id()
 }
 
-func readCluster(d ReadWrite) error {
+func (m *Manager) readCluster(d ReadWrite) error {
 	clusterNamePrefix := d.Get("name").(string)
 	region := d.Get("region").(string)
 
@@ -58,7 +58,9 @@ func readCluster(d ReadWrite) error {
 		return err
 	}
 
-	if err := doWriteKubeconfig(d, fmt.Sprintf("%s-%s", c.Name, d.Id()), c.Region); err != nil {
+	clusterName := m.getClusterName(c, d.Id())
+
+	if err := doWriteKubeconfig(d, string(clusterName), c.Region); err != nil {
 		return err
 	}
 
