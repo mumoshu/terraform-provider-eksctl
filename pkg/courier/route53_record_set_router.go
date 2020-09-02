@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/k-kinzal/progressived/pkg/provider"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"log"
 	"time"
 )
@@ -20,10 +19,6 @@ type Route53RecordSetRouter struct {
 }
 
 func (r *Route53RecordSetRouter) TrafficShift(ctx context.Context) error {
-	//svc := r.Service
-
-	sess := awsclicompat.NewSession("")
-
 	var src, dst DestinationRecordSet
 
 	switch len(r.Destinations) {
@@ -42,7 +37,7 @@ func (r *Route53RecordSetRouter) TrafficShift(ctx context.Context) error {
 	}
 
 	rp, err := provider.NewRoute53Provider(&provider.Route53Confg{
-		Sess:                  sess,
+		Client:                r.Service,
 		HostedZoneId:          r.HostedZoneID,
 		RecordName:            r.RecordName,
 		SourceIdentifier:      src.SetIdentifier,
