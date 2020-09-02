@@ -5,45 +5,45 @@ import (
 	"github.com/rs/xid"
 )
 
+var MetricResourceSchema = map[string]*schema.Schema{
+	"name": {
+		Type:     schema.TypeString,
+		Required: true,
+	},
+	"address": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  "",
+	},
+	"query": {
+		Type:     schema.TypeString,
+		Required: true,
+	},
+	"max": {
+		Type:     schema.TypeFloat,
+		Optional: true,
+	},
+	"min": {
+		Type:     schema.TypeFloat,
+		Optional: true,
+	},
+	"interval": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  "1m",
+	},
+}
+
+var MetricsSchema = &schema.Schema{
+	Type:       schema.TypeList,
+	Optional:   true,
+	ConfigMode: schema.SchemaConfigModeBlock,
+	Elem: &schema.Resource{
+		Schema: MetricResourceSchema,
+	},
+}
+
 func ResourceALB() *schema.Resource {
-	MetricResourceSchema := map[string]*schema.Schema{
-		"name": {
-			Type:     schema.TypeString,
-			Required: true,
-		},
-		"address": {
-			Type:     schema.TypeString,
-			Optional: true,
-			Default:  "",
-		},
-		"query": {
-			Type:     schema.TypeString,
-			Required: true,
-		},
-		"max": {
-			Type:     schema.TypeFloat,
-			Optional: true,
-		},
-		"min": {
-			Type:     schema.TypeFloat,
-			Optional: true,
-		},
-		"interval": {
-			Type:     schema.TypeString,
-			Optional: true,
-			Default:  "1m",
-		},
-	}
-
-	MetricsSchema := &schema.Schema{
-		Type:       schema.TypeList,
-		Optional:   true,
-		ConfigMode: schema.SchemaConfigModeBlock,
-		Elem: &schema.Resource{
-			Schema: MetricResourceSchema,
-		},
-	}
-
 	return &schema.Resource{
 		Create: func(d *schema.ResourceData, meta interface{}) error {
 			d.MarkNewResource()

@@ -9,6 +9,11 @@ type Destination struct {
 	Weight         int
 }
 
+type DestinationRecordSet struct {
+	SetIdentifier string
+	Weight        int
+}
+
 type ALBAttachment struct {
 	NodeGroupName string
 	Weght         int

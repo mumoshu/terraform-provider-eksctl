@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
+	"golang.org/x/sync/errgroup"
 	"strconv"
 	"strings"
 	"time"
@@ -50,32 +51,9 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 		return err
 	}
 
-	var metrics []courier.Metric
-
-	if v := d.Get("datadog_metric"); v != nil {
-		ms, err := courier.LoadMetrics(v.([]interface{}))
-		if err != nil {
-			return err
-		}
-
-		for i := range ms {
-			ms[i].Provider = "datadog"
-		}
-
-		metrics = ms
-	}
-
-	if v := d.Get("cloudwatch_metric"); v != nil {
-		ms, err := courier.LoadMetrics(v.([]interface{}))
-		if err != nil {
-			return err
-		}
-
-		for i := range ms {
-			ms[i].Provider = "cloudwatch"
-		}
-
-		metrics = append(metrics, ms...)
+	metrics, err := readMetrics(d)
+	if err != nil {
+		return err
 	}
 
 	var destinations []courier.Destination
@@ -145,14 +123,26 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 			Metrics:        metrics,
 		}
 
-		err = courier.DoGradualTrafficShift(ctx, svc, l, courier.CanaryOpts{
-			CanaryAdvancementInterval: 1 * time.Second,
-			CanaryAdvancementStep:     50,
-			Region:                    "",
-			ClusterName:               "",
+		ctx, cancel := context.WithCancel(ctx)
+		e, errctx := errgroup.WithContext(ctx)
+
+		e.Go(func() error {
+			defer cancel()
+			return courier.DoGradualTrafficShift(errctx, svc, l, courier.CanaryOpts{
+				CanaryAdvancementInterval: 1 * time.Second,
+				CanaryAdvancementStep:     50,
+				Region:                    "",
+				ClusterName:               "",
+			})
 		})
 
-		if err != nil {
+		data := courier.ListerStatusToTemplateData(l)
+
+		e.Go(func() error {
+			return courier.Analyze(errctx, region, l.Metrics, data)
+		})
+
+		if err := e.Wait(); err != nil {
 			return err
 		}
 	}

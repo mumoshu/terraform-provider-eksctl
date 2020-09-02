@@ -252,6 +252,11 @@ EOS
 
 ## Cluster canary deployment
 
+- [Cluster canary deployment using ALB](#cluster-canary-deployment-using-alb
+- [Cluster canary deployment using Route 53 and NLB](#cluster-canary-deployment-using-route-53-and-nlb)
+
+### Cluster canary deployment using ALB
+
 `courier_alb` resource is used to declaratively and gradually shift traffic among given target groups.
 
 In combination with standard `alb_lb_*` resources and two `eksctl_cluster`, you can conduct a "canary deployment" of the cluster.
@@ -415,7 +420,6 @@ Rethink and update `green` instead, while changing `courier_alb`'s `weight` so t
 the cluster is successfully updated:
 
 ```hcl-terraform
-
 resource "helmfile_release_set" "myapps" {
   content = file("./helmfile.yaml")
   environment = "default"
@@ -460,6 +464,134 @@ This instructs Terraform to:
 
 In addition, you can add `cloudwatch_metric`s and/or `datadog_metric`s to `courier_alb`'s `destinations`, so that the provider runs canary analysis to determine
 whether it should continue shifting the traffic.
+
+### Cluster canary deployment using Route 53 and NLB
+
+`courier_route53_record` resource is used to declaratively and gradually shift traffic behind a Route 53 record backed by ELBs. It uses Route 53's ["Weighted routing"](https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html#routing-policy-weighted) behind the scene.
+
+In combination with standard [`alb_lb`s](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lb) and two `eksctl_cluster`, you can conduct a "canary deployment" of the cluster.
+
+> This resource may be extracted out of this provider in the future.
+
+First of all, you need two sets of a Route53 record and a LB(NLB, ALB, or CLB), each named `blue` and `green`:
+
+```
+resource "aws_route53_record" "blue" {
+  zone_id = aws_route53_zone.primary.zone_id
+  name    = "www.example.com"
+  type    = "A"
+  ttl     = "5"
+
+  weighted_routing_policy {
+    weight = 1
+  }
+
+  set_identifier = "blue"
+
+  alias {
+    name                   = aws_lb.blue.dns_name
+    zone_id                = aws_lb.blue.zone_id
+    evaluate_target_health = true
+  }
+
+  lifecycle {
+    ignore_changes = [
+      weighted_routing_policy,
+    ]
+  }
+}
+
+resource "aws_route53_record" "green" {
+  zone_id = aws_route53_zone.primary.zone_id
+  name    = "www.example.com"
+  type    = "A"
+  ttl     = "5"
+
+  weighted_routing_policy {
+    weight = 0
+  }
+
+  set_identifier = "green"
+
+  alias {
+    name                   = aws_lb.green.dns_name
+    zone_id                = aws_lb.green.zone_id
+    evaluate_target_health = true
+  }
+
+  lifecycle {
+    ignore_changes = [
+      weighted_routing_policy,
+    ]
+  }
+}
+```
+
+Let's start by forwarding 100% traffic to `blue` by creating a `courier_route53_record` that looks like the below:
+
+```
+resource "eksctl_courier_route53_record" "www" {
+  zone_id = aws_route53_zone.primary.zone_id
+  name    = "www.example.com"
+
+  destination {
+    set_identifier = "blue"
+
+    weight = 100
+  }
+
+  destination {
+    set_identifier = "green"
+
+    weight = 0
+  }
+
+  depends_on = [
+    helmfile_release_set.myapps
+  ]
+}
+```
+
+Wanna make a critical change to `blue`, without fearing downtime?
+
+Rethink and update `green` instead, while changing `courier_route53_record`'s `weight` so that the traffic is forwarded to `green` only after
+the cluster is successfully updated:
+
+```hcl-terraform
+resource "helmfile_release_set" "myapps" {
+  content = file("./helmfile.yaml")
+  environment = "default"
+  environment_variables = {
+    # It was `eksctl_cluster.blue.kubeconfig_path` before
+    KUBECONFIG = eksctl_cluster.green.kubeconfig_path
+  }
+  depends_on = [
+    # This was eksctl_cluster.blue before the update
+    eksctl_cluster.green
+  ]
+}
+
+resource "eksctl_courier_route53_record" "www" {
+  zone_id = aws_route53_zone.primary.zone_id
+  name    = "www.example.com"
+
+  destination {
+    set_identifier = "blue"
+    # This was 100 before the update
+    weight = 0
+  }
+
+  destination {
+    set_identifier = "green"
+    # This was 0 before the update
+    weight = 100
+  }
+
+  depends_on = [
+    helmfile_release_set.myapps
+  ]
+}
+```
 
 ## The Goal
 
