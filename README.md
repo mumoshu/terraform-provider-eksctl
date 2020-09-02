@@ -397,6 +397,9 @@ resource "eksctl_courier_alb" "my_alb_courier" {
 
   priority = "11"
 
+  step_weight = 5
+  step_interval = "1m"
+
   destination {
     target_group_arn = aws_lb_target_group.blue.arn
 
@@ -437,6 +440,9 @@ resource "eksctl_courier_alb" "my_alb_courier" {
   listener_arn = aws_alb_listener.mysvc.arn
 
   priority = "11"
+
+  step_weight = 5
+  step_interval = "1m"
 
   destination {
     target_group_arn = aws_lb_target_group.blue.arn
@@ -534,6 +540,9 @@ resource "eksctl_courier_route53_record" "www" {
   zone_id = aws_route53_zone.primary.zone_id
   name    = "www.example.com"
 
+  step_weight = 5
+  step_interval = "1m"
+
   destination {
     set_identifier = "blue"
 
@@ -574,6 +583,9 @@ resource "helmfile_release_set" "myapps" {
 resource "eksctl_courier_route53_record" "www" {
   zone_id = aws_route53_zone.primary.zone_id
   name    = "www.example.com"
+
+  step_weight = 5
+  step_interval = "1m"
 
   destination {
     set_identifier = "blue"

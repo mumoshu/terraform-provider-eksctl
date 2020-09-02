@@ -240,7 +240,6 @@ metadata:
 
 	a.VPCID = c.VPC.ID
 
-
 	return &ClusterSet{
 		ClusterID:        id,
 		ClusterName:      clusterName,

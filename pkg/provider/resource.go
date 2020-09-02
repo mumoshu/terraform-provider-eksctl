@@ -1,8 +1,11 @@
 package provider
 
 import (
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/rs/xid"
+	"time"
 )
 
 var MetricResourceSchema = map[string]*schema.Schema{
@@ -76,6 +79,16 @@ func ResourceALB() *schema.Resource {
 			"listener_arn": {
 				Type:     schema.TypeString,
 				Required: true,
+			},
+			"step_weight": {
+				Type:         schema.TypeInt,
+				Required:     true,
+				ValidateFunc: validation.IntBetween(1, 100),
+			},
+			"step_interval": {
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: ValidateDuration,
 			},
 			// Listener rule settings
 			"priority": {
@@ -229,4 +242,11 @@ produces:
 			},
 		},
 	}
+}
+
+func ValidateDuration(v interface{}, k string) (ws []string, errors []error) {
+	if _, err := time.ParseDuration(v.(string)); err != nil {
+		errors = append(errors, fmt.Errorf("%q: invalid duration", k))
+	}
+	return
 }

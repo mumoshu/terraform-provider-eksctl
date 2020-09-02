@@ -36,4 +36,3 @@ func readMetrics(d *schema.ResourceData) ([]courier.Metric, error) {
 
 	return metrics, nil
 }
-

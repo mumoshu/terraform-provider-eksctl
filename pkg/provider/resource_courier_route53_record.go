@@ -2,6 +2,7 @@ package provider
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/rs/xid"
 )
 
@@ -42,6 +43,16 @@ func ResourceRoute53Record() *schema.Resource {
 			"name": {
 				Type:     schema.TypeString,
 				Required: true,
+			},
+			"step_weight": {
+				Type:         schema.TypeInt,
+				Required:     true,
+				ValidateFunc: validation.IntBetween(1, 100),
+			},
+			"step_interval": {
+				Type:         schema.TypeString,
+				Required:     true,
+				ValidateFunc: ValidateDuration,
 			},
 			"datadog_metric":    MetricsSchema,
 			"cloudwatch_metric": MetricsSchema,

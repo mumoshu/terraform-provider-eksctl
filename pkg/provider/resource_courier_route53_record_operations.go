@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -58,13 +59,28 @@ func createOrUpdateCourierRoute53Record(d *schema.ResourceData) error {
 		}
 	}
 
+	stepInterval := 1 * time.Second
+	if v := d.Get("step_interval"); v != nil {
+		d, err := time.ParseDuration(v.(string))
+		if err != nil {
+			return fmt.Errorf("error parsing step_interval %v: %w", v, err)
+		}
+
+		stepInterval = d
+	}
+
+	stepWeight := 50
+	if v := d.Get("step_weight"); v != nil {
+		stepWeight = v.(int)
+	}
+
 	r := &courier.Route53RecordSetRouter{
 		Service:                   svc,
 		RecordName:                recordName,
 		HostedZoneID:              zoneID,
 		Destinations:              destinations,
-		CanaryAdvancementInterval: 1 * time.Second,
-		CanaryAdvancementStep:     50,
+		CanaryAdvancementInterval: stepInterval,
+		CanaryAdvancementStep:     stepWeight,
 	}
 
 	ctx, cancel := context.WithCancel(ctx)

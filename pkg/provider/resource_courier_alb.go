@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -73,6 +74,21 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 		}
 	}
 
+	stepInterval := 1 * time.Second
+	if v := d.Get("step_interval"); v != nil {
+		d, err := time.ParseDuration(v.(string))
+		if err != nil {
+			return fmt.Errorf("error parsing step_interval %v: %w", v, err)
+		}
+
+		stepInterval = d
+	}
+
+	stepWeight := 50
+	if v := d.Get("step_weight"); v != nil {
+		stepWeight = v.(int)
+	}
+
 	if rule == nil {
 		lr.Destinations = destinations
 
@@ -129,8 +145,8 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 		e.Go(func() error {
 			defer cancel()
 			return courier.DoGradualTrafficShift(errctx, svc, l, courier.CanaryOpts{
-				CanaryAdvancementInterval: 1 * time.Second,
-				CanaryAdvancementStep:     50,
+				CanaryAdvancementInterval: stepInterval,
+				CanaryAdvancementStep:     stepWeight,
 				Region:                    "",
 				ClusterName:               "",
 			})

@@ -405,6 +405,9 @@ resource "eksctl_courier_alb" "the_listener" {
   address = vars.alb_endpoint
 
   listener_arn = aws_alb_listener.arn
+
+  step_weight = 50
+  step_interval = "1s"
   
   destination {
     target_group_arn = vars.prev_target_group_arn
