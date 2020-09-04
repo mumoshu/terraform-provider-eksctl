@@ -59,7 +59,7 @@ The computed field `output` is used to surface the output from `eksctl`. You can
 
 It's almost like writing and embedding eksctl "cluster.yaml" into `spec` attribute of the Terraform resource definition block, except that some attributes like cluster `name` and `region` has dedicated HCL attributes.
 
-Depending on the scenario, there are a few patterns in how you'de declare a `eksctl_cluster` resource.
+Depending on the scenario, there are a few patterns in how you'd declare a `eksctl_cluster` resource.
 
 - Ephemeral cluster (Don't reuse VPC, subnets, or anything)
 - Reuse VPC
@@ -133,7 +133,7 @@ resource "eksctl_cluster" "vpcreuse1" {
 vpc:
   cidr: "192.168.0.0/16"       # (optional, must match CIDR used by the given VPC)
   subnets:
-    # must provide 'private' and/or 'public' subnets by availibility zone as shown
+    # must provide 'private' and/or 'public' subnets by availability zone as shown
     private:
       us-east-2a:
         id: "subnet-1234"
@@ -153,7 +153,7 @@ EOS
 
 ### Reuse VPC, subnets, and ALBs
 
-In a production setup, the VPC, subnets, ALB, and listeners should be re-used across revisions of the cluster, so that you can let the provider to switch the cluster revisions in a blue-gree/canary deployment mannaer.
+In a production setup, the VPC, subnets, ALB, and listeners should be re-used across revisions of the cluster, so that you can let the provider to switch the cluster revisions in a blue-gree/canary deployment manner.
 
 Assuming you've used the [terraform-aws-vpc](https://github.com/terraform-aws-modules/terraform-aws-vpc) module for setting up VPC and subnets, a `eksctl_cluster` resource should usually look like the below:
 
@@ -183,7 +183,7 @@ iam:
 vpc:
   cidr: "${module.vpc.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
   subnets:
-    # must provide 'private' and/or 'public' subnets by availibility zone as shown
+    # must provide 'private' and/or 'public' subnets by availability zone as shown
     private:
       ${module.vpc.azs[0]}:
         id: "${module.vpc.private_subnets[0]}"
@@ -252,7 +252,7 @@ EOS
 
 ## Cluster canary deployment
 
-- [Cluster canary deployment using ALB](#cluster-canary-deployment-using-alb
+- [Cluster canary deployment using ALB](#cluster-canary-deployment-using-alb)
 - [Cluster canary deployment using Route 53 and NLB](#cluster-canary-deployment-using-route-53-and-nlb)
 
 ### Cluster canary deployment using ALB
@@ -612,10 +612,10 @@ My goal for this project is to allow automated canary deployment of a whole K8s 
 That would require a few additional features to this provider, including:
 
 - [x] Ability to attach `eks_cluster` to ALB
-- [ ] Analyze ALB metrics (like 2xx and 5xx count per targetgrous) so that we can postpone `terraform apply` before trying to roll out a broken cluster
+- [ ] Analyze ALB metrics (like 2xx and 5xx count per targetgroups) so that we can postpone `terraform apply` before trying to roll out a broken cluster
 - [x] Analyze important pods readiness before rolling out a cluster
   - Implemented. Use `pods_readiness_check` blocks.
-- [ ] Analyze Datadog metrics (like request success/error rate, background job sucess/error rate, etc.) before rolling out a new cluster.
+- [ ] Analyze Datadog metrics (like request success/error rate, background job success/error rate, etc.) before rolling out a new cluster.
 - [x] Specify default K8s resource manifests to be applied on the cluster
   - [The new kubernetes provider](https://www.hashicorp.com/blog/deploy-any-resource-with-the-new-kubernetes-provider-for-hashicorp-terraform/) doesn't help it. What we need is ability to apply manifests after the cluster creation but before completing update on the `eks_cluster` resource. With the kubernetes provider, the manifests are applied AFTER the `eksctl_cluster` update is done, which isn't what we want.
   - Implemented. Use the `manifests` attribute.
@@ -625,7 +625,7 @@ That would require a few additional features to this provider, including:
 
 I have been long considered about developing a K8s controller that allows you to manage eksctl cluster updates fully declaratively via a K8s CRD. The biggest pain point of that model is you still need a multi-cluster control-plane i.e. a "management" K8s cluster, which adds additional operational/maintenance cost for us.
 
-If I implement the required functionality to a terraform provider, we don't need an additional K8s cluster for management, as the state is already stored in the terraform state and the automation is aleady done with `Atlantis`, Terraform Enterprise, or any CI systems like CircleCI, GitHub Actions, etc.
+If I implement the required functionality to a terraform provider, we don't need an additional K8s cluster for management, as the state is already stored in the terraform state and the automation is already done with `Atlantis`, Terraform Enterprise, or any CI systems like CircleCI, GitHub Actions, etc.
 
 As of today, [the API is mostly there](https://github.com/mumoshu/terraform-provider-eksctl/blob/master/pkg/resource/cluster/cluster.go#L132-L210), but the implementation of the functionality is still TODO.
 
