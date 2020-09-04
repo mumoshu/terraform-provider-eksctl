@@ -215,7 +215,7 @@ There's a bunch more settings that helps the app to stay highly available while 
 - `kubernetes_resource_deletion_before_destroy`
 - `alb_attachment`
 - `pods_readiness_check`
-- Cluster canary deployment
+- `Cluster canary deployment`
 
 It's also highly recommended to include `git` configuration and use `eksctl` which includes https://github.com/weaveworks/eksctl/pull/2274 in order to install Flux in an unattended way, so that the cluster has everything deployed on launch. Otherwise blue-green deployments of the cluster doesn't make sense.
 
