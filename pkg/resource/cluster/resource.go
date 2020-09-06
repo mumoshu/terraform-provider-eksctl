@@ -7,6 +7,7 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"gopkg.in/yaml.v3"
 	"log"
+	"strings"
 )
 
 func ResourceCluster() *schema.Resource {
@@ -17,7 +18,7 @@ func ResourceCluster() *schema.Resource {
 		Create: func(d *schema.ResourceData, meta interface{}) error {
 			set, err := m.createCluster(d)
 			if err != nil {
-				return err
+				return fmt.Errorf("creating cluster: %w", err)
 			}
 
 			d.SetId(set.ClusterID)
@@ -25,7 +26,9 @@ func ResourceCluster() *schema.Resource {
 			return nil
 		},
 		CustomizeDiff: func(d *schema.ResourceDiff, meta interface{}) error {
-			_ = m.readCluster(&DiffReadWrite{D: d})
+			if err := m.planCluster(&DiffReadWrite{D: d}); err != nil {
+				return fmt.Errorf("diffing cluster: %w", err)
+			}
 
 			v := d.Get(KeyKubeconfigPath)
 
@@ -45,7 +48,7 @@ func ResourceCluster() *schema.Resource {
 			log.Printf("udapting existing cluster...")
 
 			if err := m.updateCluster(d); err != nil {
-				return err
+				return fmt.Errorf("updating cluster: %w", err)
 			}
 
 			return nil
@@ -60,7 +63,10 @@ func ResourceCluster() *schema.Resource {
 			return nil
 		},
 		Read: func(d *schema.ResourceData, meta interface{}) error {
-			return m.readCluster(d)
+			if err := m.readCluster(d); err != nil {
+				return fmt.Errorf("reading cluster: %w", err)
+			}
+			return nil
 		},
 		Schema: map[string]*schema.Schema{
 			// "ForceNew" fields

@@ -56,6 +56,20 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	return set, nil
 }
 
+func doPlanKubeconfig(d *DiffReadWrite) error {
+	var path string
+
+	if v := d.Get(KeyKubeconfigPath); v != nil {
+		path = v.(string)
+	}
+
+	if path == "" {
+		d.SetNewComputed(KeyKubeconfigPath)
+	}
+
+	return nil
+}
+
 func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 	var path string
 

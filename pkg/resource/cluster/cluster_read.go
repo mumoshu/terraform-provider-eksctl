@@ -64,12 +64,20 @@ func (m *Manager) readClusterInternal(d ReadWrite) (*Cluster, error) {
 
 	c, err := ReadCluster(d)
 	if err != nil {
+		return nil, err
+	}
+
+	return c, err
+}
+
+
+func (m *Manager) planCluster(d *DiffReadWrite) error {
+	_, err := m.readClusterInternal(d)
+	if err != nil {
 		return err
 	}
 
-	clusterName := m.getClusterName(c, d.Id())
-
-	if err := doWriteKubeconfig(d, string(clusterName), c.Region); err != nil {
+	if err := doPlanKubeconfig(d); err != nil {
 		return err
 	}
 
