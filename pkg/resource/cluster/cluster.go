@@ -124,17 +124,28 @@ func (m *Manager) PrepareClusterSet(d *schema.ResourceData, optNewId ...string) 
 	spec := map[string]interface{}{}
 
 	if err := yaml.Unmarshal([]byte(a.Spec), spec); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing used-provided cluster.yaml: %w: INPUT:\n%s", err, a.Spec)
 	}
 
 	if a.VPCID != "" {
+		var set bool
+
 		if _, ok := spec["vpc"]; !ok {
 			spec["vpc"] = map[string]interface{}{}
 		}
 
-		switch vpc := spec["vpc"].(type) {
+		rawVPC := spec["vpc"]
+		switch vpc := rawVPC.(type) {
 		case map[interface{}]interface{}:
 			vpc["id"] = a.VPCID
+			set = true
+		case map[string]interface{}:
+			vpc["id"] = a.VPCID
+			set = true
+		}
+
+		if !set {
+			return nil, fmt.Errorf("bug: failed to set vpc.id in cluster.yaml: type = %T, value = %v", rawVPC, rawVPC)
 		}
 	}
 
