@@ -1,0 +1,23 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: "gitops1"
+  region: "us-east-2"
+
+nodeGroups:
+  - name: ng1
+    instanceType: m5.large
+    desiredCapacity: 1
+
+git:
+  readOnly: true
+  repo:
+    url: "git@github.com:mumoshu/gitops-demo.git"
+    branch: master
+    fluxPath: "flux/"
+    user: "gitops"
+    email: "gitops@myorg.com"
+    privateSSHKeyPath: /Users/c-ykuoka/.ssh/id_rsa
+  operator:
+    namespace: "flux"

@@ -83,13 +83,12 @@ resource "eksctl_cluster" "primary" {
   eksctl_bin = "eksctl-0.20.0"
   name = "primary1"
   region = "us-east-2"
-  spec = <<EOS
-
-nodeGroups:
+  spec = <<-EOS
+  nodeGroups:
   - name: ng1
     instanceType: m5.large
     desiredCapacity: 1
-EOS
+  EOS
 }
 ```
 
@@ -105,13 +104,12 @@ resource "eksctl_cluster" "vpcreuse1" {
   name = "vpcreuse1"
   region = "us-east-2"
   vpc_id = "vpc-09c6c9f579baef3ea"
-  spec = <<EOS
-
-nodeGroups:
+  spec = <<-EOS
+  nodeGroups:
   - name: ng1
     instanceType: m5.large
     desiredCapacity: 1
-EOS
+  EOS
 }
 ```
 
@@ -128,26 +126,25 @@ resource "eksctl_cluster" "vpcreuse1" {
   name = "vpcreuse1"
   region = "us-east-2"
   vpc_id = "vpc-09c6c9f579baef3ea"
-  spec = <<EOS
+  spec = <<-EOS
+  vpc:
+    cidr: "192.168.0.0/16"       # (optional, must match CIDR used by the given VPC)
+    subnets:
+      # must provide 'private' and/or 'public' subnets by availability zone as shown
+      private:
+        us-east-2a:
+          id: "subnet-1234"
+          cidr: "192.168.160.0/19" # (optional, must match CIDR used by the given subnet)
+      public:
+        us-east-2a:
+          id: "subnet-2345"
+          cidr: "192.168.64.0/19" # (optional, must match CIDR used by the given subnet)
 
-vpc:
-  cidr: "192.168.0.0/16"       # (optional, must match CIDR used by the given VPC)
-  subnets:
-    # must provide 'private' and/or 'public' subnets by availability zone as shown
-    private:
-      us-east-2a:
-        id: "subnet-1234"
-        cidr: "192.168.160.0/19" # (optional, must match CIDR used by the given subnet)
-    public:
-      us-east-2a:
-        id: "subnet-2345"
-        cidr: "192.168.64.0/19" # (optional, must match CIDR used by the given subnet)
-
-nodeGroups:
-  - name: ng1
-    instanceType: m5.large
-    desiredCapacity: 1
-EOS
+  nodeGroups:
+    - name: ng1
+      instanceType: m5.large
+      desiredCapacity: 1
+  EOS
 }
 ```
 
@@ -166,9 +163,8 @@ resource "eksctl_cluster" "primary" {
   version = "1.16"
   vpc_id = module.vpc.vpc_id
   revision = 1
-  spec = <<EOS
-
-nodeGroups:
+  spec = <<-EOS
+  nodeGroups:
   - name: ng2
     instanceType: m5.large
     desiredCapacity: 1
@@ -176,35 +172,35 @@ nodeGroups:
       attachIDs:
       - ${aws_security_group.public_alb_private_backend.id}
 
-iam:
-  withOIDC: true
-  serviceAccounts: []
+  iam:
+    withOIDC: true
+    serviceAccounts: []
 
-vpc:
-  cidr: "${module.vpc.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
-  subnets:
-    # must provide 'private' and/or 'public' subnets by availability zone as shown
-    private:
-      ${module.vpc.azs[0]}:
-        id: "${module.vpc.private_subnets[0]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[1]}:
-        id: "${module.vpc.private_subnets[1]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[2]}:
-        id: "${module.vpc.private_subnets[2]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
-    public:
-      ${module.vpc.azs[0]}:
-        id: "${module.vpc.public_subnets[0]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[1]}:
-        id: "${module.vpc.public_subnets[1]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[2]}:
-        id: "${module.vpc.public_subnets[2]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
-EOS
+  vpc:
+    cidr: "${module.vpc.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
+    subnets:
+      # must provide 'private' and/or 'public' subnets by availability zone as shown
+      private:
+        ${module.vpc.azs[0]}:
+          id: "${module.vpc.private_subnets[0]}"
+          cidr: "${module.vpc.private_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
+        ${module.vpc.azs[1]}:
+          id: "${module.vpc.private_subnets[1]}"
+          cidr: "${module.vpc.private_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
+        ${module.vpc.azs[2]}:
+          id: "${module.vpc.private_subnets[2]}"
+          cidr: "${module.vpc.private_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
+      public:
+        ${module.vpc.azs[0]}:
+          id: "${module.vpc.public_subnets[0]}"
+          cidr: "${module.vpc.public_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
+        ${module.vpc.azs[1]}:
+          id: "${module.vpc.public_subnets[1]}"
+          cidr: "${module.vpc.public_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
+        ${module.vpc.azs[2]}:
+          id: "${module.vpc.public_subnets[2]}"
+          cidr: "${module.vpc.public_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
+  EOS
 }
 ```
 
@@ -236,11 +232,12 @@ resource "eksctl_cluster_deployment" "primary" {
   name = "primary"
   region = "us-east-2"
 
-  spec = <<EOS
+  spec = <<-EOS
+  nodeGroups:
   - name: ng2
     instanceType: m5.large
     desiredCapacity: 1
-EOS
+  EOS
 
   kubernetes_resource_deletion_before_destroy {
     namespace = "flux"
@@ -355,14 +352,14 @@ resource "eksctl_cluster" "blue" {
   api_version = "eksctl.io/v1alpha5"
   version = "1.15"
   vpc_id = module.vpc.vpc_id
-  spec = <<EOS
-nodeGroups:
+  spec = <<-EOS
+  nodeGroups:
   - name: ng2
     instanceType: m5.large
     desiredCapacity: 1
     targetGroupARNs:
     - ${aws_lb_target_group.blue.arn}
-EOS
+  EOS
 }
 
 resource "eksctl_cluster" "green" {
@@ -371,14 +368,14 @@ resource "eksctl_cluster" "green" {
   api_version = "eksctl.io/v1alpha5"
   version = "1.16"
   vpc_id = module.vpc.vpc_id
-  spec = <<EOS
-nodeGroups:
+  spec = <<-EOS
+  nodeGroups:
   - name: ng2
     instanceType: m5.large
     desiredCapacity: 1
     targetGroupARNs:
     - ${aws_lb_target_group.green.arn}
-EOS
+  EOS
 }
 
 resource "helmfile_release_set" "myapps" {

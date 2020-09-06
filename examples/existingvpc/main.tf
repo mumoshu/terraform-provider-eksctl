@@ -174,395 +174,6 @@ resource "aws_lb_target_group" "tg2" {
   vpc_id = module.vpc.vpc_id
 }
 
-resource "eksctl_cluster_deployment" "primary" {
-  eksctl_bin = "eksctl-dev"
-  name = "existingvpc2"
-  region = "us-east-2"
-  api_version = "eksctl.io/v1alpha5"
-  version = "1.16"
-  vpc_id = module.vpc.vpc_id
-  revision = 3
-  spec = <<EOS
-
-nodeGroups:
-  - name: ng2
-    instanceType: m5.large
-    desiredCapacity: 1
-    targetGroupARNs:
-    - ${aws_lb_target_group.tg1.arn}
-    securityGroups:
-      attachIDs:
-      - ${aws_security_group.public_alb_private_backend.id}
-
-iam:
-  withOIDC: true
-  serviceAccounts: []
-
-vpc:
-  cidr: "${module.vpc.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
-  subnets:
-    # must provide 'private' and/or 'public' subnets by availibility zone as shown
-    private:
-      ${module.vpc.azs[0]}:
-        id: "${module.vpc.private_subnets[0]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[1]}:
-        id: "${module.vpc.private_subnets[1]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[2]}:
-        id: "${module.vpc.private_subnets[2]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
-    public:
-      ${module.vpc.azs[0]}:
-        id: "${module.vpc.public_subnets[0]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[1]}:
-        id: "${module.vpc.public_subnets[1]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[2]}:
-        id: "${module.vpc.public_subnets[2]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
-
-git:
-  repo:
-    url: "git@github.com:mumoshu/gitops-demo.git"
-    branch: master
-    fluxPath: "flux/"
-    user: "gitops"
-    email: "gitops@myorg.com"
-    ## Uncomment this when `commitOperatorManifests: true`
-    #privateSSHKeyPath: /path/to/your/ssh/key
-  operator:
-    commitOperatorManifests: false
-    namespace: "flux"
-    readOnly: true
-EOS
-
-  manifests = [
-    <<EOS
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: podinfo
-spec:
-  minReadySeconds: 3
-  revisionHistoryLimit: 5
-  progressDeadlineSeconds: 60
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 0
-    type: RollingUpdate
-  selector:
-    matchLabels:
-      app: podinfo
-  template:
-    metadata:
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9797"
-      labels:
-        app: podinfo
-    spec:
-      containers:
-      - name: podinfod
-        image: stefanprodan/podinfo:4.0.1
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: http
-          containerPort: 9898
-          protocol: TCP
-        - name: http-metrics
-          containerPort: 9797
-          protocol: TCP
-        - name: grpc
-          containerPort: 9999
-          protocol: TCP
-        command:
-        - ./podinfo
-        - --port=9898
-        - --port-metrics=9797
-        - --grpc-port=9999
-        - --grpc-service-name=podinfo
-        - --level=info
-        - --random-delay=false
-        - --random-error=false
-        env:
-        - name: PODINFO_UI_COLOR
-          value: "#34577c"
-        livenessProbe:
-          exec:
-            command:
-            - podcli
-            - check
-            - http
-            - localhost:9898/healthz
-          initialDelaySeconds: 5
-          timeoutSeconds: 5
-        readinessProbe:
-          exec:
-            command:
-            - podcli
-            - check
-            - http
-            - localhost:9898/readyz
-          initialDelaySeconds: 5
-          timeoutSeconds: 5
-        resources:
-          limits:
-            cpu: 2000m
-            memory: 512Mi
-          requests:
-            cpu: 100m
-            memory: 64Mi
----
-# k create service nodeport --tcp 80:9898 --node-port 30080 podinfo -o yaml --dry-run
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app: podinfo
-  name: podinfo
-spec:
-  ports:
-  - name: 80-9898
-    nodePort: 30080
-    port: 80
-    protocol: TCP
-    targetPort: 9898
-  selector:
-    app: podinfo
-  type: NodePort
-EOS
-  ,
-    file("manifests/metrics-server-v0.3.6/all.yaml"),
-  ]
-
-  pods_readiness_check {
-    namespace = "default"
-    labels = {
-      app = "podinfo"
-    }
-    timeout_sec = 300
-  }
-
-  kubernetes_resource_deletion_before_destroy {
-    namespace = "flux"
-    kind = "deployment"
-    name = "flux"
-  }
-
-  alb_attachment {
-    protocol = "http"
-
-    node_port = 30080
-    node_group_name = "ng2"
-    weight = 19
-
-    // We specify listener rather than alb, so that we can reuse any listener that is created out-of-band
-    listener_arn = aws_alb_listener.podinfo.arn
-
-    // alb_attachment manages only one alb listener rule
-    //
-    // this specifies the priority of the only rule
-    priority = 10
-
-    // Settings below are for configuring rule conditions
-    hosts = [
-      "example.com",
-      "*.example.com"]
-    methods = [
-      "get"]
-    path_patterns = [
-      "/*"]
-    //    source_ips = ["1.2.3.4/32"]
-  }
-
-  depends_on = [
-    module.vpc]
-}
-
-
-resource "eksctl_cluster_deployment" "green" {
-  eksctl_bin = "eksctl-dev"
-  name = "green"
-  region = "us-east-2"
-  api_version = "eksctl.io/v1alpha5"
-  version = "1.16"
-  vpc_id = module.vpc.vpc_id
-  revision = 3
-  spec = <<EOS
-
-nodeGroups:
-  - name: ng2
-    instanceType: m5.large
-    desiredCapacity: 1
-    targetGroupARNs:
-    - ${aws_lb_target_group.tg2.arn}
-    securityGroups:
-      attachIDs:
-      - ${aws_security_group.public_alb_private_backend.id}
-
-iam:
-  withOIDC: true
-  serviceAccounts: []
-
-vpc:
-  cidr: "${module.vpc.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
-  subnets:
-    # must provide 'private' and/or 'public' subnets by availibility zone as shown
-    private:
-      ${module.vpc.azs[0]}:
-        id: "${module.vpc.private_subnets[0]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[1]}:
-        id: "${module.vpc.private_subnets[1]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[2]}:
-        id: "${module.vpc.private_subnets[2]}"
-        cidr: "${module.vpc.private_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
-    public:
-      ${module.vpc.azs[0]}:
-        id: "${module.vpc.public_subnets[0]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[0]}" # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[1]}:
-        id: "${module.vpc.public_subnets[1]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[1]}"  # (optional, must match CIDR used by the given subnet)
-      ${module.vpc.azs[2]}:
-        id: "${module.vpc.public_subnets[2]}"
-        cidr: "${module.vpc.public_subnets_cidr_blocks[2]}"   # (optional, must match CIDR used by the given subnet)
-
-git:
-  repo:
-    url: "git@github.com:mumoshu/gitops-demo.git"
-    branch: master
-    fluxPath: "flux/"
-    user: "gitops"
-    email: "gitops@myorg.com"
-    ## Uncomment this when `commitOperatorManifests: true`
-    #privateSSHKeyPath: /path/to/your/ssh/key
-  operator:
-    commitOperatorManifests: false
-    namespace: "flux"
-    readOnly: true
-EOS
-
-  manifests = [
-    <<EOS
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: podinfo
-spec:
-  minReadySeconds: 3
-  revisionHistoryLimit: 5
-  progressDeadlineSeconds: 60
-  strategy:
-    rollingUpdate:
-      maxUnavailable: 0
-    type: RollingUpdate
-  selector:
-    matchLabels:
-      app: podinfo
-  template:
-    metadata:
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9797"
-      labels:
-        app: podinfo
-    spec:
-      containers:
-      - name: podinfod
-        image: stefanprodan/podinfo:4.0.1
-        imagePullPolicy: IfNotPresent
-        ports:
-        - name: http
-          containerPort: 9898
-          protocol: TCP
-        - name: http-metrics
-          containerPort: 9797
-          protocol: TCP
-        - name: grpc
-          containerPort: 9999
-          protocol: TCP
-        command:
-        - ./podinfo
-        - --port=9898
-        - --port-metrics=9797
-        - --grpc-port=9999
-        - --grpc-service-name=podinfo
-        - --level=info
-        - --random-delay=false
-        - --random-error=false
-        env:
-        - name: PODINFO_UI_COLOR
-          value: "#34577c"
-        livenessProbe:
-          exec:
-            command:
-            - podcli
-            - check
-            - http
-            - localhost:9898/healthz
-          initialDelaySeconds: 5
-          timeoutSeconds: 5
-        readinessProbe:
-          exec:
-            command:
-            - podcli
-            - check
-            - http
-            - localhost:9898/readyz
-          initialDelaySeconds: 5
-          timeoutSeconds: 5
-        resources:
-          limits:
-            cpu: 2000m
-            memory: 512Mi
-          requests:
-            cpu: 100m
-            memory: 64Mi
----
-# k create service nodeport --tcp 80:9898 --node-port 30080 podinfo -o yaml --dry-run
-apiVersion: v1
-kind: Service
-metadata:
-  labels:
-    app: podinfo
-  name: podinfo
-spec:
-  ports:
-  - name: 80-9898
-    nodePort: 30080
-    port: 80
-    protocol: TCP
-    targetPort: 9898
-  selector:
-    app: podinfo
-  type: NodePort
-EOS
-  ,
-    file("manifests/metrics-server-v0.3.6/all.yaml"),
-  ]
-
-  pods_readiness_check {
-    namespace = "default"
-    labels = {
-      app = "podinfo"
-    }
-    timeout_sec = 300
-  }
-
-  kubernetes_resource_deletion_before_destroy {
-    namespace = "flux"
-    kind = "deployment"
-    name = "flux"
-  }
-
-  depends_on = [
-    module.vpc]
-}
-
 resource "eksctl_cluster" "red" {
   eksctl_bin = "eksctl-dev"
   name = "red"
@@ -635,6 +246,12 @@ resource "eksctl_courier_alb" "my_alb_courier" {
 
   priority = "11"
 
+  step_weight = 10
+  step_interval = "5s"
+
+  hosts = [
+    "exmaple.com"]
+
   destination {
     target_group_arn = aws_lb_target_group.tg1.arn
 
@@ -647,22 +264,79 @@ resource "eksctl_courier_alb" "my_alb_courier" {
   }
 
   depends_on = [
-    eksctl_cluster_deployment.primary,
+    eksctl_cluster.red,
     helmfile_release_set.mystack1
   ]
-}
-
-output "kubeconfig_path" {
-  value = eksctl_cluster_deployment.primary.kubeconfig_path
 }
 
 resource "helmfile_release_set" "mystack1" {
   content = file("./helmfile.yaml")
   environment = "default"
   environment_variables = {
-    KUBECONFIG = eksctl_cluster_deployment.primary.kubeconfig_path
+    KUBECONFIG = eksctl_cluster.red.kubeconfig_path
   }
   depends_on = [
-    eksctl_cluster_deployment.primary,
+    eksctl_cluster.red,
   ]
+}
+
+output "kubeconfig_path" {
+  value = eksctl_cluster.red.kubeconfig_path
+}
+
+output "alb_listener_arn" {
+  value = aws_alb_listener.podinfo.arn
+}
+
+output "vpc_id" {
+  value = module.vpc.vpc_id
+}
+
+output "vpc_public_subnets_ids" {
+  value = module.vpc.public_subnets
+}
+
+output "vpc_private_subnet_ids" {
+  value = module.vpc.private_subnets
+}
+
+output "vpc_public_subnet_cidr_blocks" {
+  value = module.vpc.public_subnets_cidr_blocks
+}
+
+output "vpc_private_subnet_cidr_blocks" {
+  value = module.vpc.private_subnets_cidr_blocks
+}
+
+output "vpc_subnet_azs" {
+  value = module.vpc.azs
+}
+
+output "vpc_cidr_block" {
+  value = module.vpc.vpc_cidr_block
+}
+
+output "vpc_subnet_groups" {
+  value = {
+    "public" = [
+      for i in range(length(module.vpc.azs)):
+      {
+        cidr = module.vpc.public_subnets_cidr_blocks[i],
+        az = module.vpc.azs[i],
+        id = module.vpc.public_subnets[i],
+      }
+    ],
+    "private" = [
+        for i in range(length(module.vpc.azs)):
+        {
+          cidr = module.vpc.private_subnets_cidr_blocks[i],
+          az = module.vpc.azs[i],
+          id = module.vpc.private_subnets[i],
+        }
+    ]
+  }
+}
+
+output "security_group_id" {
+  value = aws_security_group.public_alb_private_backend.id
 }
