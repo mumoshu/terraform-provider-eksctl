@@ -95,7 +95,7 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 		createRuleInput, err := ruleCreationInput(listenerARN, lr)
 		o, err := svc.CreateRule(createRuleInput)
 		if err != nil {
-			return err
+			return fmt.Errorf("creating listener rule: %w", err)
 		}
 
 		rule = o.Rules[0]

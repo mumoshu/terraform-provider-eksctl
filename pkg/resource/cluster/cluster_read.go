@@ -30,17 +30,26 @@ func (d *DiffReadWrite) Set(k string, v interface{}) error {
 	return d.D.SetNew(k, v)
 }
 
+func (d *DiffReadWrite) SetNewComputed(k string) error {
+	return d.D.SetNewComputed(k)
+}
+
 func (d *DiffReadWrite) Id() string {
 	return d.D.Id()
 }
 
 func (m *Manager) readCluster(d ReadWrite) error {
+	_, err:= m.readClusterInternal(d)
+	return err
+}
+
+func (m *Manager) readClusterInternal(d ReadWrite) (*Cluster, error) {
 	clusterNamePrefix := d.Get("name").(string)
 	region := d.Get("region").(string)
 
 	arns, err := getTargetGroupARNs(region, clusterNamePrefix)
 	if err != nil {
-		return fmt.Errorf("reading cluster: %w", err)
+		return nil, fmt.Errorf("reading cluster: %w", err)
 	}
 
 	var v []interface{}

@@ -34,7 +34,7 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	cmd.Stdin = bytes.NewReader(set.ClusterConfig)
 
 	if err := resource.Create(cmd, d, id); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("running `eksctl create cluster: %w: USED CLUSTER CONFIG:\n%s", err, string(set.ClusterConfig))
 	}
 
 	if err := doWriteKubeconfig(d, string(set.ClusterName), cluster.Region); err != nil {
@@ -66,7 +66,7 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 	if path == "" {
 		kubeconfig, err := ioutil.TempFile(os.TempDir(), "tf-eksctl-kubeconfig")
 		if err != nil {
-			return fmt.Errorf("failed generating temporary kubecongig: %w", err)
+			return fmt.Errorf("failed generating kubeconfig path: %w", err)
 		}
 		_ = kubeconfig.Close()
 

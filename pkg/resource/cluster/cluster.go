@@ -198,7 +198,7 @@ metadata:
 	}
 
 	if err := yaml.Unmarshal(seedClusterConfig, &c); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parsing generate cluster.yaml: %w: INPUT:\n%s", err, string(seedClusterConfig))
 	}
 	//
 	//for i := range c.NodeGroups {

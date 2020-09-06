@@ -129,15 +129,19 @@ func ResourceCluster() *schema.Resource {
 				ValidateFunc: func(v interface{}, name string) ([]string, []error) {
 					s := v.(string)
 
+					if strings.TrimSpace(s) == "" {
+						return nil, nil
+					}
+
 					configForVaildation := EksctlClusterConfig{
 						Rest: map[string]interface{}{},
 					}
 					if err := yaml.Unmarshal([]byte(s), &configForVaildation); err != nil {
-						return nil, []error{err}
+						return nil, []error{fmt.Errorf("vaidating eksctl_cluster's \"spec\": %w: INPUT:\n%s", err, s)}
 					}
 
 					if configForVaildation.VPC.ID != "" {
-						return nil, []error{fmt.Errorf("validating attribute \"spec\": vpc.id must not be set within the spec yaml. use \"vpc_id\" attribute instead, becaues the provider uses it for generating the final eksctl cluster config yaml")}
+						return nil, []error{fmt.Errorf("validating eksctl_cluster's \"spec\": vpc.id must not be set within the spec yaml. use \"vpc_id\" attribute instead, becaues the provider uses it for generating the final eksctl cluster config yaml")}
 					}
 
 					return nil, nil
