@@ -1,0 +1,6 @@
+/main.tf
+/*.tf
+/*.log
+/*.tfvars.json*
+/.terraform*
+/helmfile-*.yaml
