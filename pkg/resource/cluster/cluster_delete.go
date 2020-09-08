@@ -2,10 +2,10 @@ package cluster
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"log"
-	"os/exec"
 )
 
 func (m *Manager) deleteCluster(d *schema.ResourceData) error {
@@ -29,7 +29,10 @@ func (m *Manager) deleteCluster(d *schema.ResourceData) error {
 		return err
 	}
 
-	cmd := exec.Command(cluster.EksctlBin, args...)
+	cmd, err := newEksctlCommand(cluster, args...)
+	if err != nil {
+		return fmt.Errorf("creating eksctl-delete command: %w", err)
+	}
 
 	cmd.Stdin = bytes.NewReader(set.ClusterConfig)
 

@@ -29,7 +29,10 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command(cluster.EksctlBin, "create", "cluster", "-f", "-")
+	cmd, err := newEksctlCommand(cluster, "create", "cluster", "-f", "-")
+	if err != nil {
+		return nil, fmt.Errorf("creating eksctl-create command: %w", err)
+	}
 
 	cmd.Stdin = bytes.NewReader(set.ClusterConfig)
 
@@ -89,7 +92,11 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 		d.Set(KeyKubeconfigPath, path)
 	}
 
-	cmd := exec.Command(d.Get(KeyBin).(string), "utils", "write-kubeconfig", "--cluster", clusterName, "--region", region)
+	cmd, err := newEksctlCommandFromResource(d, "utils", "write-kubeconfig", "--cluster", clusterName, "--region", region)
+	if err != nil {
+		return fmt.Errorf("creating eksctl-utils-write-kubeconfig command: %w", err)
+	}
+
 	cmd.Env = append(cmd.Env, os.Environ()...)
 	cmd.Env = append(cmd.Env, "KUBECONFIG="+path)
 

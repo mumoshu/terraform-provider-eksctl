@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"log"
-	"os/exec"
 	"strconv"
 )
 
@@ -38,7 +37,10 @@ func getLiveClusterInfo(d *schema.ResourceData) (*LiveClusterInfo, error) {
 		"-o", "json",
 	}
 
-	cmd := exec.Command(cluster.EksctlBin, args...)
+	cmd, err := newEksctlCommand(cluster, args...)
+	if err != nil {
+		return nil, err
+	}
 
 	cmd.Stdin = bytes.NewReader(set.ClusterConfig)
 

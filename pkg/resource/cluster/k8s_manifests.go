@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"io/ioutil"
 	"os"
@@ -27,7 +28,11 @@ func doApplyKubernetesManifests(cluster *Cluster, id string) error {
 
 	clusterName := cluster.Name + "-" + id
 
-	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
+	writeKubeconfigCmd, err := newEksctlCommand(cluster, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
+	if err != nil {
+		return fmt.Errorf("creating eksctl-utils-write-kubeconfig command: %w", err)
+	}
+
 	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
 		return err
 	}

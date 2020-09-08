@@ -27,7 +27,11 @@ func doDeleteKubernetesResourcesBeforeDestroy(cluster *Cluster, id string) error
 
 	clusterName := cluster.Name + "-" + id
 
-	writeKubeconfigCmd := exec.Command(cluster.EksctlBin, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
+	writeKubeconfigCmd, err := newEksctlCommand(cluster, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
+	if err != nil {
+		return err
+	}
+
 	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
 		return err
 	}

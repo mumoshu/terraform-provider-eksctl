@@ -117,6 +117,11 @@ func ResourceCluster() *schema.Resource {
 				Optional: true,
 				Default:  "eksctl",
 			},
+			KeyEksctlVersion: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
 			KeyKubectlBin: {
 				Type:     schema.TypeString,
 				Optional: true,
@@ -338,6 +343,11 @@ func ResourceClusterDeployment() *schema.Resource {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "eksctl",
+			},
+			KeyEksctlVersion: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
 			},
 			KeyKubectlBin: {
 				Type:     schema.TypeString,

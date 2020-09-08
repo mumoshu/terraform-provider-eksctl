@@ -7,6 +7,13 @@ Benefits:
 - `terraform apply` to bring up your whole infrastructure.
 - No more generating eksctl `cluster.yaml` with Terraform and a glue shell script just for integration between TF and eksctl.
 
+Features:
+
+- Manage eksctl clusters using Terraform
+- [Install and upgrade eksctl version using Terraform](#declarative-binary-version-management)
+- [Cluster canary deployment using ALB](#cluster-canary-deployment-using-alb)
+- [Cluster canary deployment using Route 53 + NLB](#cluster-canary-deployment-using-route-53-and-nlb)
+
 ## Installation
 
 **For Terraform 0.12:**
@@ -600,6 +607,30 @@ resource "eksctl_courier_route53_record" "www" {
     helmfile_release_set.myapps
   ]
 }
+```
+
+
+## Advanced Features
+
+- Declarative biniary version management
+
+### Declarative binary version management
+
+`terraform-provider-eksctl` has a built-in package manager called [shoal](https://github.com/mumoshu/shoal).
+With that, you can specify the following `eksctl_cluster` attributes to let the provider install the executable binaries on demand:
+
+- `eksctl_version` for installing `eksctl`
+
+`eksctl_version` uses the Go runtime and [go-git](https://github.com/go-git/go-git) so it should work without any dependency.
+
+With the below example, the provider installs `eksctl` v0.27.0, so that you don't need to install it beforehand.
+This should be handy when you're trying to use this provider on Terraform Cloud, whose runtime environment is [not available for customization by the user](https://www.terraform.io/docs/cloud/run/run-environment.html).
+
+```hcl-terraform
+resource "eksctl_cluster" "mystack" {
+  eksctl_version = "0.27.0"
+
+  // snip
 ```
 
 ## The Goal

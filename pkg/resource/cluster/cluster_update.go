@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"log"
-	"os/exec"
 	"strings"
 )
 
@@ -22,7 +21,10 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	createNew := func(kind string, harmlessErrors []string) func() error {
 		return func() error {
-			cmd := exec.Command(cluster.EksctlBin, "create", kind, "-f", "-")
+			cmd, err := newEksctlCommand(cluster, "create", kind, "-f", "-")
+			if err != nil {
+				return fmt.Errorf("creating eksctl-create command: %w", err)
+			}
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
@@ -52,7 +54,10 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		return func() error {
 			args := append([]string{"delete", kind, "-f", "-", "--only-missing"}, extraArgs...)
 
-			cmd := exec.Command(cluster.EksctlBin, args...)
+			cmd, err := newEksctlCommand(cluster, args...)
+			if err != nil {
+				return fmt.Errorf("creating eksctl-delete command: %w", err)
+			}
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
@@ -81,7 +86,10 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	associateIAMOIDCProvider := func() func() error {
 		return func() error {
-			cmd := exec.Command(cluster.EksctlBin, "utils", "associate-iam-oidc-provider", "-f", "-", "--approve")
+			cmd, err := newEksctlCommand(cluster, "utils", "associate-iam-oidc-provider", "-f", "-", "--approve")
+			if err != nil {
+				return fmt.Errorf("creating eksctl-utils-associate-iam-oidc-provider command: %w", err)
+			}
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
 			if err := resource.Update(cmd, d); err != nil {
@@ -100,7 +108,10 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	enableRepo := func() func() error {
 		return func() error {
-			cmd := exec.Command(cluster.EksctlBin, "enable", "repo", "-f", "-")
+			cmd, err := newEksctlCommand(cluster, "enable", "repo", "-f", "-")
+			if err != nil {
+				return fmt.Errorf("creating eksctl-enable-repo command: %w", err)
+			}
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
 			if err := resource.Update(cmd, d); err != nil {

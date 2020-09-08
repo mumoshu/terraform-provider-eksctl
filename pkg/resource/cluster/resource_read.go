@@ -8,6 +8,7 @@ import (
 func ReadCluster(d Read) (*Cluster, error) {
 	a := Cluster{}
 	a.EksctlBin = d.Get(KeyBin).(string)
+	a.EksctlVersion = d.Get(KeyEksctlVersion).(string)
 	a.KubectlBin = d.Get(KeyKubectlBin).(string)
 	a.Name = d.Get(KeyName).(string)
 	a.Region = d.Get(KeyRegion).(string)

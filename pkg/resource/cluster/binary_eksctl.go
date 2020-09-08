@@ -7,9 +7,13 @@ import (
 	"sync"
 )
 
-var shoalMu sync.Mutex
+var prepareEksctlMu sync.Mutex
 
 func prepareEksctlBinary(cluster *Cluster) (*string, error) {
+	return prepareEksctlBinaryInternal(cluster.EksctlBin, cluster.EksctlVersion)
+}
+
+func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, error) {
 	conf := shoal.Config{
 		Git: shoal.Git{
 			Provider: "go-git",
@@ -17,10 +21,6 @@ func prepareEksctlBinary(cluster *Cluster) (*string, error) {
 	}
 
 	rig := "https://github.com/fishworks/fish-food"
-
-	eksctlBin := cluster.EksctlBin
-
-	eksctlVersion := cluster.EksctlVersion
 
 	installEksctl := eksctlVersion != ""
 
@@ -34,8 +34,8 @@ func prepareEksctlBinary(cluster *Cluster) (*string, error) {
 		)
 	}
 
-	shoalMu.Lock()
-	defer shoalMu.Unlock()
+	prepareEksctlMu.Lock()
+	defer prepareEksctlMu.Unlock()
 
 	s, err := shoal.New()
 	if err != nil {

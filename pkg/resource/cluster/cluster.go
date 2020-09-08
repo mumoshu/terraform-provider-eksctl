@@ -19,6 +19,7 @@ const KeyVersion = "version"
 const KeyRevision = "revision"
 const KeySpec = "spec"
 const KeyBin = "eksctl_bin"
+const KeyEksctlVersion = "eksctl_version"
 const KeyKubeconfigPath = "kubeconfig_path"
 const KeyKubectlBin = "kubectl_bin"
 const KeyPodsReadinessCheck = "pods_readiness_check"
@@ -58,6 +59,9 @@ type Cluster struct {
 	Spec       string
 	Output     string
 	Manifests  []string
+
+	// EksctlVersion lets the provider to install the eksctl binary for the specified versino using shoal
+	EksctlVersion string
 
 	CheckPodsReadinessConfigs []CheckPodsReadiness
 
