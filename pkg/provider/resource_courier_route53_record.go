@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/rs/xid"
@@ -14,9 +15,15 @@ func ResourceRoute53Record() *schema.Resource {
 			id := xid.New().String()
 			d.SetId(id)
 
-			return createOrUpdateCourierRoute53Record(d)
+			if err := createOrUpdateCourierRoute53Record(d); err != nil {
+				return fmt.Errorf("updating courier_route53_record: %w", err)
+			}
+			return nil
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
+			if err := createOrUpdateCourierRoute53Record(d); err != nil {
+				return fmt.Errorf("updating courier_route53_record: %w", err)
+			}
 			return nil
 		},
 		CustomizeDiff: func(diff *schema.ResourceDiff, i interface{}) error {

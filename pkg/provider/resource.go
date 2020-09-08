@@ -54,9 +54,14 @@ func ResourceALB() *schema.Resource {
 			id := xid.New().String()
 			d.SetId(id)
 
-			return createOrUpdateCourierALB(d)
+			if err := createOrUpdateCourierALB(d); err != nil {
+				return fmt.Errorf("creating courier_alb: %w", err)
+			}
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
+			if err := createOrUpdateCourierALB(d); err != nil {
+				return fmt.Errorf("updating courier_alb: %w", err)
+			}
 			return nil
 		},
 		CustomizeDiff: func(diff *schema.ResourceDiff, i interface{}) error {
