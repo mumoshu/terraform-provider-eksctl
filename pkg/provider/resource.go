@@ -57,6 +57,7 @@ func ResourceALB() *schema.Resource {
 			if err := createOrUpdateCourierALB(d); err != nil {
 				return fmt.Errorf("creating courier_alb: %w", err)
 			}
+			return nil
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
 			if err := createOrUpdateCourierALB(d); err != nil {
