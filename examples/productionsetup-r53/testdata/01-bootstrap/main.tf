@@ -85,6 +85,10 @@ resource "aws_route53_record" "r53blue" {
     evaluate_target_health = false
   }
 
+  weighted_routing_policy {
+    weight = 1
+  }
+
   lifecycle {
     ignore_changes = [
       weighted_routing_policy,
@@ -103,6 +107,10 @@ resource "aws_route53_record" "r53green" {
     name                   = aws_lb.r53blue.dns_name
     zone_id                = aws_lb.r53blue.zone_id
     evaluate_target_health = false
+  }
+
+  weighted_routing_policy {
+    weight = 0
   }
 
   lifecycle {
