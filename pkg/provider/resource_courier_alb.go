@@ -9,10 +9,62 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"golang.org/x/sync/errgroup"
+	"log"
 	"strconv"
 	"strings"
 	"time"
 )
+
+func deleteCourierALB(d *schema.ResourceData) error {
+	var region string
+	if v := d.Get("region"); v != nil {
+		region = v.(string)
+	}
+
+	sess := awsclicompat.NewSession(region)
+
+	if v := d.Get("address"); v != nil {
+		sess.Config.Endpoint = aws.String(v.(string))
+	}
+
+	svc := elbv2.New(sess)
+
+	listenerARN := d.Get("listener_arn").(string)
+
+	o, err := svc.DescribeRules(&elbv2.DescribeRulesInput{
+		ListenerArn: aws.String(listenerARN),
+	})
+	if err != nil {
+		return err
+	}
+
+	priority := d.Get("priority").(int)
+	priorityStr := strconv.Itoa(priority)
+
+	var rule *elbv2.Rule
+	for _, r := range o.Rules {
+		if r.Priority != nil && *r.Priority == priorityStr {
+			rule = r
+		}
+	}
+
+	if rule != nil {
+		input := &elbv2.DeleteRuleInput{RuleArn: rule.RuleArn}
+		if res, err := svc.DeleteRule(input); err != nil {
+			var appendix string
+
+			if res != nil {
+				appendix = fmt.Sprintf("\nOUTPUT:\n%v", *res)
+			}
+
+			log.Printf("Error: deleting rule: %w\nINPUT:\n%v%s", err, *input, appendix)
+
+			return fmt.Errorf("deleting rule: %w", err)
+		}
+	}
+
+	return nil
+}
 
 func createOrUpdateCourierALB(d *schema.ResourceData) error {
 	var region string

@@ -164,6 +164,8 @@ resource "eksctl_courier_alb" "myapp" {
   step_weight = 10
   step_interval = "10s"
 
+  hosts = ["example.com"]
+
   destination {
     target_group_arn = aws_lb_target_group.blue.arn
 

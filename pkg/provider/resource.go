@@ -63,6 +63,10 @@ func ResourceALB() *schema.Resource {
 			return nil
 		},
 		Delete: func(d *schema.ResourceData, meta interface{}) error {
+			if err := deleteCourierALB(d); err != nil {
+				return err
+			}
+
 			d.SetId("")
 
 			return nil

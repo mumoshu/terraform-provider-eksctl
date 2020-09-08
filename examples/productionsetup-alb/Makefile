@@ -1,12 +1,15 @@
 WORKSPACE ?= $(shell pwd)
 HELMFILE_ROOT ?= ../../../terraform-provider-helmfile
 
-.PHONY: dev
-dev:
+.PHONY: build
+build:
 	mkdir -p .terraform/plugins/darwin_amd64
 	cd ../..; make build && mv dist/darwin_amd64/terraform-provider-eksctl $(WORKSPACE)/.terraform/plugins/darwin_amd64/
 	cd $(HELMFILE_ROOT); make build && mv dist/darwin_amd64/terraform-provider-helmfile $(WORKSPACE)/.terraform/plugins/darwin_amd64/
-	make testdata/01-bootstrap init tfvars plan apply testdata/02-replace plan apply destroy
+
+.PHONY: dev
+dev:
+	make build testdata/01-bootstrap init tfvars plan apply testdata/02-replace plan apply destroy
 
 STEPS = $(wildcard testdata/*)
 

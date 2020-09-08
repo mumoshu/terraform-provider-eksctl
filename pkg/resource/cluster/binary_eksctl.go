@@ -1,0 +1,66 @@
+package cluster
+
+import (
+	"fmt"
+	"github.com/mumoshu/shoal"
+	"path/filepath"
+	"sync"
+)
+
+var shoalMu sync.Mutex
+
+func prepareEksctlBinary(cluster *Cluster) (*string, error) {
+	conf := shoal.Config{
+		Git: shoal.Git{
+			Provider: "go-git",
+		},
+	}
+
+	rig := "https://github.com/fishworks/fish-food"
+
+	eksctlBin := cluster.EksctlBin
+
+	eksctlVersion := cluster.EksctlVersion
+
+	installEksctl := eksctlVersion != ""
+
+	if installEksctl {
+		conf.Dependencies = append(conf.Dependencies,
+			shoal.Dependency{
+				Rig:     rig,
+				Food:    "eksctl",
+				Version: eksctlVersion,
+			},
+		)
+	}
+
+	shoalMu.Lock()
+	defer shoalMu.Unlock()
+
+	s, err := shoal.New()
+	if err != nil {
+		return nil, err
+	}
+
+	if len(conf.Dependencies) > 0 {
+		if err := s.Init(); err != nil {
+			return nil, fmt.Errorf("initializing shoal: %w", err)
+		}
+
+		if err := s.InitGitProvider(conf); err != nil {
+			return nil, fmt.Errorf("initializing shoal git provider: %w", err)
+		}
+
+		if err := s.Sync(conf); err != nil {
+			return nil, err
+		}
+	}
+
+	binPath := s.BinPath()
+
+	if eksctlVersion != "" {
+		eksctlBin = filepath.Join(binPath, "eksctl")
+	}
+
+	return &eksctlBin, nil
+}
