@@ -174,7 +174,7 @@ func TestAccCourierRoute53Record_create(t *testing.T) {
 			params := &route53.ListResourceRecordSetsOutput{
 				// TODO This is a workaround for progressived's bug that treats IsTruncated's meaning as it's oppposite
 				// Set this `aws.Bool(false)` once we fix that.
-				IsTruncated: aws.Bool(true),
+				IsTruncated: aws.Bool(false),
 				ResourceRecordSets: []*route53.ResourceRecordSet{
 					{
 						Name:          aws.String("record_name"),
