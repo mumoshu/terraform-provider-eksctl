@@ -59,7 +59,7 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	return set, nil
 }
 
-func doPlanKubeconfig(d *DiffReadWrite) error {
+func (m *Manager) doPlanKubeconfig(d *DiffReadWrite) error {
 	var path string
 
 	if v := d.Get(KeyKubeconfigPath); v != nil {
