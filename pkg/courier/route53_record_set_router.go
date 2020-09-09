@@ -69,7 +69,7 @@ func (r *Route53RecordSetRouter) TrafficShift(ctx context.Context) error {
 	ticker := time.NewTicker(advancementInterval)
 	defer ticker.Stop()
 
-	p := 1
+	p := step
 
 	for {
 		select {
@@ -83,6 +83,8 @@ func (r *Route53RecordSetRouter) TrafficShift(ctx context.Context) error {
 				}
 				return nil
 			}
+
+			log.Printf("Setting weight to %v", p)
 
 			if err := rp.Update(float64(p)); err != nil {
 				return err

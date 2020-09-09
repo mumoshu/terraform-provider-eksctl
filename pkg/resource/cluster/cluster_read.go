@@ -39,7 +39,7 @@ func (d *DiffReadWrite) Id() string {
 }
 
 func (m *Manager) readCluster(d ReadWrite) error {
-	_, err:= m.readClusterInternal(d)
+	_, err := m.readClusterInternal(d)
 	return err
 }
 
@@ -69,7 +69,6 @@ func (m *Manager) readClusterInternal(d ReadWrite) (*Cluster, error) {
 
 	return c, err
 }
-
 
 func (m *Manager) planCluster(d *DiffReadWrite) error {
 	_, err := m.readClusterInternal(d)

@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/armon/circbuf v0.0.0-20190214190532-5111143e8da2
 	github.com/aws/aws-sdk-go v1.34.5
+	github.com/google/go-cmp v0.4.0
 	github.com/hashicorp/terraform-plugin-sdk v1.0.0
 	github.com/k-kinzal/progressived v0.0.0-20200902003902-9d6590a84c37
 	github.com/mitchellh/go-linereader v0.0.0-20190213213312-1b945b3263eb
