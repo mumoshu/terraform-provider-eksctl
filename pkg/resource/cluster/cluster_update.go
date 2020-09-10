@@ -142,8 +142,9 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	id := d.Id()
 
+	clusterName := string(set.ClusterName)
 	harmlessFargateProfileCreationErrors := []string{
-		fmt.Sprintf(`Error: no output "FargatePodExecutionRoleARN" in stack "eksctl-%s-%s-cluster"`, cluster.Name, id),
+		fmt.Sprintf(`Error: no output "FargatePodExecutionRoleARN" in stack "eksctl-%s-cluster"`, clusterName),
 	}
 
 	tasks := []func() error{
