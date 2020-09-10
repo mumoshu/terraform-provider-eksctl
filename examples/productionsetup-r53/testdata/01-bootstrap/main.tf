@@ -41,15 +41,26 @@ resource "aws_lb" "r53green" {
 resource "aws_lb_target_group" "r53blue" {
   name = "r53blue"
   port = local.podinfo_nodeport
-  protocol = "HTTP"
+  protocol = "TCP"
   vpc_id = var.vpc_id
+  stickiness {
+    enabled = false
+    type = "lb_cookie"
+// source_ip seems not supported by tf at the moment: https://github.com/terraform-providers/terraform-provider-aws/pull/13762
+//    type = "source_ip"
+  }
 }
 
 resource "aws_lb_target_group" "r53green" {
   name = "r53green"
   port = local.podinfo_nodeport
-  protocol = "HTTP"
+  protocol = "TCP"
   vpc_id = var.vpc_id
+  stickiness {
+    enabled = false
+    type = "lb_cookie"
+//    type = "source_ip"
+  }
 }
 
 resource "aws_lb_listener" "r53blue" {
@@ -67,7 +78,7 @@ resource "aws_lb_listener" "r53green" {
   port = 30080
   protocol = "TCP"
   default_action {
-    target_group_arn = aws_lb_target_group.r53blue.arn
+    target_group_arn = aws_lb_target_group.r53green.arn
     type = "forward"
   }
 }
@@ -184,7 +195,7 @@ resource "helmfile_release_set" "r53blue_myapp_v1" {
 
 resource "eksctl_courier_route53_record" "myapp" {
   zone_id = var.route53_zone_id
-  name = var.route53_record_name
+  name = "${var.route53_record_name}."
 
   step_weight = 10
   step_interval = "10s"

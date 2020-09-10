@@ -41,15 +41,25 @@ resource "aws_lb" "r53green" {
 resource "aws_lb_target_group" "r53blue" {
   name = "r53blue"
   port = local.podinfo_nodeport
-  protocol = "HTTP"
+  protocol = "TCP"
   vpc_id = var.vpc_id
+  stickiness {
+    enabled = false
+    type = "lb_cookie"
+//    type = "source_ip"
+  }
 }
 
 resource "aws_lb_target_group" "r53green" {
   name = "r53green"
   port = local.podinfo_nodeport
-  protocol = "HTTP"
+  protocol = "TCP"
   vpc_id = var.vpc_id
+  stickiness {
+    enabled = false
+    type = "lb_cookie"
+//    type = "source_ip"
+  }
 }
 
 resource "aws_lb_listener" "r53blue" {
@@ -67,7 +77,7 @@ resource "aws_lb_listener" "r53green" {
   port = 30080
   protocol = "TCP"
   default_action {
-    target_group_arn = aws_lb_target_group.r53blue.arn
+    target_group_arn = aws_lb_target_group.r53green.arn
     type = "forward"
   }
 }
