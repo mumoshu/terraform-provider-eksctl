@@ -256,7 +256,7 @@ resource "helmfile_release_set" "r53green_myapp_v1" {
 
 resource "eksctl_courier_route53_record" "myapp" {
   zone_id = var.route53_zone_id
-  name = var.route53_record_name
+  name = "${var.route53_record_name}."
 
   step_weight = 10
   step_interval = "10s"
