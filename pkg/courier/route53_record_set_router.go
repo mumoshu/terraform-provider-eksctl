@@ -75,19 +75,18 @@ func (r *Route53RecordSetRouter) TrafficShift(ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			if p >= 100 {
-				fmt.Printf("Done.")
 				p = 100
-
-				if err := rp.Update(100); err != nil {
-					return err
-				}
-				return nil
 			}
 
 			log.Printf("Setting weight to %v", p)
 
 			if err := rp.Update(float64(p)); err != nil {
 				return err
+			}
+
+			if p == 100 {
+				fmt.Printf("Done.")
+				return nil
 			}
 
 			p += step

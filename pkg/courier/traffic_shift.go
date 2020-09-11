@@ -42,19 +42,18 @@ func DoGradualTrafficShift(ctx context.Context, svc elbv2iface.ELBV2API, l Liste
 			select {
 			case <-ticker.C:
 				if p >= 100 {
-					fmt.Printf("Done.")
 					p = 100
-
-					if err := SetDesiredTGTrafficPercentage(svc, l, 100); err != nil {
-						return err
-					}
-					return nil
 				}
 
 				log.Printf("Setting weight to %v", p)
 
 				if err := SetDesiredTGTrafficPercentage(svc, l, p); err != nil {
 					return err
+				}
+
+				if p == 100 {
+					fmt.Printf("Done.")
+					return nil
 				}
 
 				p += step
