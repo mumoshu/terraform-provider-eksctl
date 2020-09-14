@@ -45,7 +45,7 @@ func DoGradualTrafficShift(ctx context.Context, svc elbv2iface.ELBV2API, l Liste
 					p = 100
 				}
 
-				log.Printf("Setting weight to %v", p)
+				log.Printf("Setting weight to DesiredTG %s: Weight %v, CurrentTG %s: Weight %v.", *l.DesiredTG.TargetGroupName, int64(p), *l.CurrentTG.TargetGroupName, int64(100-p))
 
 				if err := SetDesiredTGTrafficPercentage(svc, l, p); err != nil {
 					return err
