@@ -167,6 +167,14 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 		r1, err := svc.DescribeTargetGroups(&elbv2.DescribeTargetGroupsInput{
 			TargetGroupArns: []*string{
 				aws.String(nextTGARN),
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		r2, err := svc.DescribeTargetGroups(&elbv2.DescribeTargetGroupsInput{
+			TargetGroupArns: []*string{
 				aws.String(prevTGARN),
 			},
 		})
@@ -186,7 +194,7 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 			Rule:           rule,
 			ALBAttachments: nil,
 			DesiredTG:      r1.TargetGroups[0],
-			CurrentTG:      r1.TargetGroups[1],
+			CurrentTG:      r2.TargetGroups[0],
 			DeletedTGs:     nil,
 			Metrics:        metrics,
 		}
