@@ -104,7 +104,7 @@ resource "eksctl_cluster" "blue" {
   spec = <<EOS
 
 nodeGroups:
-  - name: ng
+  - name: ng2
     instanceType: m5.large
     desiredCapacity: 1
     targetGroupARNs:
@@ -115,7 +115,13 @@ nodeGroups:
 
 iam:
   withOIDC: true
-  serviceAccounts: []
+  serviceAccounts:
+  - metadata:
+      name: reader2
+      namespace: default
+      labels: {aws-usage: "application"}
+    attachPolicyARNs:
+    - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
 vpc:
   cidr: "${var.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)

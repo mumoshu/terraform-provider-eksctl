@@ -9,7 +9,11 @@ build:
 
 .PHONY: dev
 dev:
-	make build testdata/01-bootstrap init tfvars plan apply testdata/02-replace plan apply destroy
+	make build
+	make testdata/01-bootstrap init tfvars plan apply
+	make testdata/02-update-to-add plan apply
+	make testdata/03-update-to-del plan apply
+	make testdata/04-switch-cluster plan apply destroy
 
 STEPS = $(wildcard testdata/*)
 
