@@ -68,6 +68,16 @@ func ResourceCluster() *schema.Resource {
 			}
 			return nil
 		},
+		Importer: &schema.ResourceImporter{
+			State: func(data *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
+				data, err := m.importCluster(data)
+				if err != nil {
+					return nil, fmt.Errorf("importing cluster: %w", err)
+				}
+
+				return []*schema.ResourceData{data}, nil
+			},
+		},
 		Schema: map[string]*schema.Schema{
 			// "ForceNew" fields
 			//
