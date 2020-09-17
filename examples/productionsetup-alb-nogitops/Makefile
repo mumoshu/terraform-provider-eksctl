@@ -30,19 +30,27 @@ tfvars:
 $(STEPS):%:$$(wildcard %/*.tf)
 	@echo Preparing $@
 	cp $< .
+	echo $(shell basename $@) > CURRENT
 
 .PHONY: init
 init:
 	terraform init
 
+.PHONY: testout
+testout:
+	mkdir -p testout/$$(cat CURRENT)
+
 .PHONY: plan
-plan:
-	TF_LOG_PATH=tf.plan.log TF_LOG=TRACE terraform plan
+plan: testout
+	if [ -e testout/$$(cat CURRENT)/tf.plan.log ]; then rm testout/$$(cat CURRENT)/tf.plan.log; fi
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.plan.log TF_LOG=TRACE terraform plan
 
 .PHONY: apply
-apply:
-	TF_LOG_PATH=tf.apply.log TF_LOG=TRACE terraform apply -auto-approve
+apply: testout
+	if [ -e testout/$$(cat CURRENT)/tf.apply.log ]; then rm testout/$$(cat CURRENT)/tf.apply.log; fi
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.apply.log TF_LOG=TRACE terraform apply -auto-approve
 
 .PHONY: destroy
-destroy:
-	TF_LOG_PATH=tf.destroy.log TF_LOG=TRACE terraform destroy -auto-approve
+destroy: testout
+	if [ -e testout/$$(cat CURRENT)/tf.destroy.log ]; then rm testout/$$(cat CURRENT)/tf.destroy.log; fi
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.destroy.log TF_LOG=TRACE terraform destroy -auto-approve
