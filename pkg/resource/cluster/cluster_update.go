@@ -108,6 +108,12 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	enableRepo := func() func() error {
 		return func() error {
+			if g, err := cluster.GitOpsEnabled(); err != nil {
+				return fmt.Errorf("reading git config from cluster.yaml: %w", err)
+			} else if !g {
+				return nil
+			}
+
 			cmd, err := newEksctlCommand(cluster, "enable", "repo", "-f", "-")
 			if err != nil {
 				return fmt.Errorf("creating eksctl-enable-repo command: %w", err)

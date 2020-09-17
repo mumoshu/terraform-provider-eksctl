@@ -74,6 +74,22 @@ type Cluster struct {
 	Metrics          []courier.Metric
 }
 
+func (c Cluster) GitOpsEnabled() (bool, error) {
+	var config EksctlClusterConfig
+
+	if err := yaml.Unmarshal([]byte(c.Spec), &config); err != nil {
+		return false, fmt.Errorf("parsing cluster.yaml: %w\nCONTENT:\n%s", err, c.Spec)
+	}
+
+	if config.Git != nil {
+		if r, ok := config.Git["repo"].(map[string]interface{}); ok {
+			return len(r) > 0, nil
+		}
+	}
+
+	return false, nil
+}
+
 type DeleteKubernetesResource struct {
 	Namespace string
 	Name      string
@@ -81,9 +97,13 @@ type DeleteKubernetesResource struct {
 }
 
 type EksctlClusterConfig struct {
-	VPC        VPC                    `yaml:"vpc"`
-	NodeGroups []NodeGroup            `yaml:"nodeGroups"`
-	Rest       map[string]interface{} `yaml:",inline"`
+	VPC        VPC         `yaml:"vpc"`
+	NodeGroups []NodeGroup `yaml:"nodeGroups"`
+
+	// omitempty is required from eksctl-perspective. Otherwise, eksctl fails due to `git.repo.url is required` error
+	// on `git: {}` in the generated cluster.yaml.
+	Git  map[string]interface{} `yaml:"git,omitempty"`
+	Rest map[string]interface{} `yaml:",inline"`
 }
 
 type VPC struct {
