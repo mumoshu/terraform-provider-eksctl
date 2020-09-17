@@ -19,9 +19,11 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	cluster, clusterConfig := set.Cluster, set.ClusterConfig
 
-	createNew := func(kind string, harmlessErrors []string) func() error {
+	createNew := func(kind string, extraArgs []string, harmlessErrors []string) func() error {
 		return func() error {
-			cmd, err := newEksctlCommand(cluster, "create", kind, "-f", "-")
+			args := []string{"create", kind, "-f", "-"}
+			args = append(args, extraArgs...)
+			cmd, err := newEksctlCommand(cluster, args...)
 			if err != nil {
 				return fmt.Errorf("creating eksctl-create command: %w", err)
 			}
@@ -154,13 +156,13 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 	}
 
 	tasks := []func() error{
-		createNew("nodegroup", nil),
+		createNew("nodegroup", nil, nil),
 		associateIAMOIDCProvider(),
-		createNew("iamserviceaccount", nil),
-		createNew("fargateprofile", harmlessFargateProfileCreationErrors),
+		createNew("iamserviceaccount", []string{"--approve"}, nil),
+		createNew("fargateprofile", nil, harmlessFargateProfileCreationErrors),
 		enableRepo(),
-		deleteMissing("nodegroup", []string{"--drain"}, nil),
-		deleteMissing("iamserviceaccount", nil, nil),
+		deleteMissing("nodegroup", []string{"--drain", "--approve"}, nil),
+		deleteMissing("iamserviceaccount", []string{"--approve"}, nil),
 		// eksctl delete fargate profile doens't has --only-missing command
 		//deleteMissing("fargateprofile", nil, []string{"Error: invalid Fargate profile: empty name"}),
 		applyKubernetesManifests(id),
