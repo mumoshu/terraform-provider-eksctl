@@ -107,8 +107,9 @@ type EksctlClusterConfig struct {
 }
 
 type VPC struct {
-	ID      string  `yaml:"id"`
-	Subnets Subnets `yaml:"subnets"`
+	ID      string                 `yaml:"id"`
+	Subnets Subnets                `yaml:"subnets"`
+	Rest    map[string]interface{} `yaml:",inline"`
 }
 
 type Subnets struct {
@@ -227,6 +228,7 @@ metadata:
 				Public:  map[string]Subnet{},
 				Private: map[string]Subnet{},
 			},
+			Rest: map[string]interface{}{},
 		},
 		NodeGroups: []NodeGroup{},
 		Rest:       map[string]interface{}{},
