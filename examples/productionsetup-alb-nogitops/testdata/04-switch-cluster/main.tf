@@ -95,7 +95,7 @@ resource "aws_lb_target_group" "green" {
 }
 
 resource "eksctl_cluster" "blue" {
-  eksctl_bin = "eksctl-dev"
+  eksctl_version = "0.27.0"
   name = "blue"
   region = var.region
   api_version = "eksctl.io/v1alpha5"
@@ -149,7 +149,7 @@ resource "helmfile_release_set" "blue_myapp_v1" {
 }
 
 resource "eksctl_cluster" "green" {
-  eksctl_bin = "eksctl-dev"
+  eksctl_version = "0.27.0"
   name = "green"
   region = var.region
   api_version = "eksctl.io/v1alpha5"
