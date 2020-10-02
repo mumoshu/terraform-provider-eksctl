@@ -3,10 +3,11 @@ package cluster
 import (
 	"bytes"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"log"
 	"strings"
+
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 )
 
 func (m *Manager) updateCluster(d *schema.ResourceData) error {
@@ -155,6 +156,27 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		fmt.Sprintf(`Error: no output "FargatePodExecutionRoleARN" in stack "eksctl-%s-cluster"`, clusterName),
 	}
 
+	draineNodegroup := func() func() error {
+
+		return func() error {
+
+			ngrps := d.Get(KeyDrainNodeGroups).([]interface{})
+
+			for _, v := range ngrps {
+				args := []string{
+					"drain",
+					"nodegroup",
+					"--cluster=" + clusterName,
+					"--name=" + v.(string),
+				}
+				newEksctlCommand(cluster, args...)
+			}
+
+			return nil
+		}
+
+	}
+
 	tasks := []func() error{
 		createNew("nodegroup", nil, nil),
 		associateIAMOIDCProvider(),
@@ -169,6 +191,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		attachNodeGroupsToTargetGroups(),
 		checkPodsReadiness(id),
 		writeKubeconfig(),
+		draineNodegroup(),
 	}
 
 	for _, t := range tasks {

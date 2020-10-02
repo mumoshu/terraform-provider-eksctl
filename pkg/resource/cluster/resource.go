@@ -2,12 +2,13 @@ package cluster
 
 import (
 	"fmt"
+	"log"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"gopkg.in/yaml.v3"
-	"log"
-	"strings"
 )
 
 func ResourceCluster() *schema.Resource {
@@ -167,6 +168,10 @@ func ResourceCluster() *schema.Resource {
 
 					return nil, nil
 				},
+			},
+			KeyDrainNodeGroups: {
+				Type:     schema.TypeList,
+				Optional: true,
 			},
 			resource.KeyOutput: {
 				Type:     schema.TypeString,
