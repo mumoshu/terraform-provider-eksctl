@@ -172,6 +172,7 @@ func ResourceCluster() *schema.Resource {
 			KeyDrainNodeGroups: {
 				Type:     schema.TypeList,
 				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 			resource.KeyOutput: {
 				Type:     schema.TypeString,
