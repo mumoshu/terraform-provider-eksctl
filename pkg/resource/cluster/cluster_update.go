@@ -160,16 +160,30 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 		return func() error {
 
-			ngrps := d.Get(KeyDrainNodeGroups).([]interface{})
+			args := []string{
+				"drain",
+				"nodegroup",
+				"--cluster=" + clusterName,
+				"-n",
+			}
+			nodegroups := d.Get(KeyDrainNodeGroups).(map[string]interface{})
 
-			for _, v := range ngrps {
-				args := []string{
-					"drain",
-					"nodegroup",
-					"--cluster=" + clusterName,
-					"--name=" + v.(string),
+			for k, v := range nodegroups {
+				log.Printf("DRAIN    %v %v ", k, v)
+				opt := append(args, string(k))
+
+				if v == false {
+					opt = append(opt, "--undo")
 				}
-				newEksctlCommand(cluster, args...)
+				cmd, err := newEksctlCommand(cluster, opt...)
+
+				if err != nil {
+					return fmt.Errorf("creating eksctl drain command: %w", err)
+				}
+
+				if err := resource.Update(cmd, d); err != nil {
+					return fmt.Errorf("%v\n\nDrain Error:\n%s", err, string(clusterConfig))
+				}
 			}
 
 			return nil
@@ -183,6 +197,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		createNew("iamserviceaccount", []string{"--approve"}, nil),
 		createNew("fargateprofile", nil, harmlessFargateProfileCreationErrors),
 		enableRepo(),
+		draineNodegroup(),
 		deleteMissing("nodegroup", []string{"--drain", "--approve"}, nil),
 		deleteMissing("iamserviceaccount", []string{"--approve"}, nil),
 		// eksctl delete fargate profile doens't has --only-missing command
@@ -191,7 +206,6 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		attachNodeGroupsToTargetGroups(),
 		checkPodsReadiness(id),
 		writeKubeconfig(),
-		draineNodegroup(),
 	}
 
 	for _, t := range tasks {

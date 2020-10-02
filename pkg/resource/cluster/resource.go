@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -41,6 +42,10 @@ func ResourceCluster() *schema.Resource {
 
 			if d.Id() == "" || kp == "" {
 				d.SetNewComputed(KeyKubeconfigPath)
+			}
+
+			if err := valiedDrainNodeGroups(d); err != nil {
+				return fmt.Errorf("drain error %s", err)
 			}
 
 			return nil
@@ -170,9 +175,11 @@ func ResourceCluster() *schema.Resource {
 				},
 			},
 			KeyDrainNodeGroups: {
-				Type:     schema.TypeList,
+				Type:     schema.TypeMap,
 				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Elem: &schema.Schema{
+					Type: schema.TypeBool,
+				},
 			},
 			resource.KeyOutput: {
 				Type:     schema.TypeString,
@@ -640,4 +647,26 @@ produces:
 			},
 		},
 	}
+}
+
+func valiedDrainNodeGroups(d *schema.ResourceDiff) error {
+
+	if v, ok := d.GetOk("drain_node_groups"); ok {
+
+		spec := ""
+
+		if s, ok := d.GetOk("spec"); ok {
+			spec = s.(string)
+		}
+
+		nodegroups := v.(map[string]interface{})
+		for k := range nodegroups {
+			reg := regexp.MustCompile(`- name: ` + k)
+			if !reg.MatchString(spec) {
+				return fmt.Errorf("not such node group to drain '%s'", k)
+			}
+		}
+	}
+
+	return nil
 }
