@@ -651,11 +651,11 @@ produces:
 
 func validateDrainNodeGroups(d *schema.ResourceDiff) error {
 
-	if v, ok := d.GetOk("drain_node_groups"); ok {
+	if v, ok := d.GetOk(KeyDrainNodeGroups); ok {
 
 		spec := ""
 
-		if s, ok := d.GetOk("spec"); ok {
+		if s, ok := d.GetOk(KeySpec); ok {
 			spec = s.(string)
 		}
 
@@ -663,7 +663,7 @@ func validateDrainNodeGroups(d *schema.ResourceDiff) error {
 		for k := range nodegroups {
 			reg := regexp.MustCompile(`- name: ` + k)
 			if !reg.MatchString(spec) {
-				return fmt.Errorf("not such nodegroup to drain '%s'", k)
+				return fmt.Errorf("no such nodegroup to drain '%s'", k)
 			}
 		}
 	}

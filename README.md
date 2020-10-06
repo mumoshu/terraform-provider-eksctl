@@ -210,6 +210,55 @@ resource "eksctl_cluster" "primary" {
   EOS
 }
 ```
+### Drain NodeGroups
+
+You can use `drain_node_groups` to define which nodegroup want to drain nodegroup as `eksctl drain nodegroup`.
+
+```HCL
+provider "eksctl" {}
+
+resource "eksctl_cluster" "vpcreuse1" {
+  eksctl_bin = "eksctl-0.20.0"
+  name   = "vpcreuse1"
+  spec   = <<-EOS
+  vpc:
+    subnets:
+      private:
+        us-east-2a: { id: "${local.subnet_private_ids[0]}" }
+        us-east-2b: { id: "${local.subnet_private_ids[1]}" }
+        us-east-2c: { id: "${local.subnet_private_ids[2]}" }
+      public:
+        us-east-2a: { id: "${local.subnet_public_ids[0]}" }
+        us-east-2b: { id: "${local.subnet_public_ids[1]}" }
+        us-east-2c: { id: "${local.subnet_public_ids[2]}" }
+
+  iam:
+    withOIDC: true
+    serviceAccounts: []
+
+  nodeGroups:
+    - name: ng1
+      instanceType: t2.small
+      desiredCapacity: 1
+    - name: ng2
+      instanceType: t2.small
+      desiredCapacity: 1
+  EOS
+
+  drain_node_groups = {
+    ng1 = true,
+    ng2 = false,
+  }
+
+```
+```console
+> kubectl get no
+NAME                                      STATUS                     ROLES    AGE    VERSION
+ip-10-0-4-28.us-east-2.compute.internal   Ready,SchedulingDisabled   <none>   4d1h   v1.16.13-eks-ec92d4
+ip-10-0-5-72.us-east-2.compute.internal   Ready                      <none>   4d1h   v1.16.13-eks-ec92d4
+```
+
+
 
 ## Advanced Features and Use-cases
 
