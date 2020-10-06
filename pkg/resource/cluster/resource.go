@@ -44,8 +44,8 @@ func ResourceCluster() *schema.Resource {
 				d.SetNewComputed(KeyKubeconfigPath)
 			}
 
-			if err := valiedDrainNodeGroups(d); err != nil {
-				return fmt.Errorf("drain error %s", err)
+			if err := validateDrainNodeGroups(d); err != nil {
+				return fmt.Errorf("drain error: %s", err)
 			}
 
 			return nil
@@ -649,7 +649,7 @@ produces:
 	}
 }
 
-func valiedDrainNodeGroups(d *schema.ResourceDiff) error {
+func validateDrainNodeGroups(d *schema.ResourceDiff) error {
 
 	if v, ok := d.GetOk("drain_node_groups"); ok {
 
@@ -663,7 +663,7 @@ func valiedDrainNodeGroups(d *schema.ResourceDiff) error {
 		for k := range nodegroups {
 			reg := regexp.MustCompile(`- name: ` + k)
 			if !reg.MatchString(spec) {
-				return fmt.Errorf("not such node group to drain '%s'", k)
+				return fmt.Errorf("not such nodegroup to drain '%s'", k)
 			}
 		}
 	}

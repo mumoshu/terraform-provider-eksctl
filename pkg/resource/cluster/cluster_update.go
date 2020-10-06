@@ -182,7 +182,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 				}
 
 				if err := resource.Update(cmd, d); err != nil {
-					return fmt.Errorf("%v\n\nDrain Error:\n%s", err, string(clusterConfig))
+					return fmt.Errorf("Drain Error: %v", err )
 				}
 			}
 

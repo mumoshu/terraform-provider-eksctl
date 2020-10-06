@@ -1,8 +1,7 @@
 .DEFAULT_GOAL := build
 OS            := $(shell go env GOOS)
 ARCH          := $(shell go env GOARCH)
-# PLUGIN_PATH   ?= ${HOME}/.terraform.d/plugins/${OS}_${ARCH}
-PLUGIN_PATH   ?= ${HOME}/.terraform.d/plugins/example.com/myorg/eksctl/0.8.6/${OS}_${ARCH}/
+PLUGIN_PATH   ?= ${HOME}/.terraform.d/plugins/${OS}_${ARCH}
 PLUGIN_NAME   := terraform-provider-eksctl
 DIST_PATH     := dist/${OS}_${ARCH}
 GO_PACKAGES   := $(shell go list ./... | grep -v /vendor/)
