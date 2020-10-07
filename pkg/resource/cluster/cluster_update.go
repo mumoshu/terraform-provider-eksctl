@@ -3,10 +3,11 @@ package cluster
 import (
 	"bytes"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"log"
 	"strings"
+
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 )
 
 func (m *Manager) updateCluster(d *schema.ResourceData) error {
@@ -155,12 +156,48 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		fmt.Sprintf(`Error: no output "FargatePodExecutionRoleARN" in stack "eksctl-%s-cluster"`, clusterName),
 	}
 
+	draineNodegroup := func() func() error {
+
+		return func() error {
+
+			args := []string{
+				"drain",
+				"nodegroup",
+				"--cluster=" + clusterName,
+				"-n",
+			}
+			nodegroups := d.Get(KeyDrainNodeGroups).(map[string]interface{})
+
+			for k, v := range nodegroups {
+				log.Printf("DRAIN    %v %v ", k, v)
+				opt := append(args, string(k))
+
+				if v == false {
+					opt = append(opt, "--undo")
+				}
+				cmd, err := newEksctlCommand(cluster, opt...)
+
+				if err != nil {
+					return fmt.Errorf("creating eksctl drain command: %w", err)
+				}
+
+				if err := resource.Update(cmd, d); err != nil {
+					return fmt.Errorf("Drain Error: %v", err )
+				}
+			}
+
+			return nil
+		}
+
+	}
+
 	tasks := []func() error{
 		createNew("nodegroup", nil, nil),
 		associateIAMOIDCProvider(),
 		createNew("iamserviceaccount", []string{"--approve"}, nil),
 		createNew("fargateprofile", nil, harmlessFargateProfileCreationErrors),
 		enableRepo(),
+		draineNodegroup(),
 		deleteMissing("nodegroup", []string{"--drain", "--approve"}, nil),
 		deleteMissing("iamserviceaccount", []string{"--approve"}, nil),
 		// eksctl delete fargate profile doens't has --only-missing command

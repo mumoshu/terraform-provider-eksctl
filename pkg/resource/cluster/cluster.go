@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
-	"log"
-	"time"
 )
 
 const KeyName = "name"
@@ -28,7 +29,7 @@ const KeyALBAttachment = "alb_attachment"
 const KeyVPCID = "vpc_id"
 const KeyManifests = "manifests"
 const KeyMetrics = "metrics"
-
+const KeyDrainNodeGroups = "drain_node_groups"
 const (
 	KeyTargetGroupARNs = "target_group_arns"
 )

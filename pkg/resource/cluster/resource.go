@@ -2,12 +2,14 @@ package cluster
 
 import (
 	"fmt"
+	"log"
+	"regexp"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"gopkg.in/yaml.v3"
-	"log"
-	"strings"
 )
 
 func ResourceCluster() *schema.Resource {
@@ -40,6 +42,10 @@ func ResourceCluster() *schema.Resource {
 
 			if d.Id() == "" || kp == "" {
 				d.SetNewComputed(KeyKubeconfigPath)
+			}
+
+			if err := validateDrainNodeGroups(d); err != nil {
+				return fmt.Errorf("drain error: %s", err)
 			}
 
 			return nil
@@ -166,6 +172,13 @@ func ResourceCluster() *schema.Resource {
 					}
 
 					return nil, nil
+				},
+			},
+			KeyDrainNodeGroups: {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeBool,
 				},
 			},
 			resource.KeyOutput: {
@@ -634,4 +647,26 @@ produces:
 			},
 		},
 	}
+}
+
+func validateDrainNodeGroups(d *schema.ResourceDiff) error {
+
+	if v, ok := d.GetOk(KeyDrainNodeGroups); ok {
+
+		spec := ""
+
+		if s, ok := d.GetOk(KeySpec); ok {
+			spec = s.(string)
+		}
+
+		nodegroups := v.(map[string]interface{})
+		for k := range nodegroups {
+			reg := regexp.MustCompile(`- name: ` + k)
+			if !reg.MatchString(spec) {
+				return fmt.Errorf("no such nodegroup to drain '%s'", k)
+			}
+		}
+	}
+
+	return nil
 }
