@@ -212,7 +212,7 @@ resource "eksctl_cluster" "primary" {
 ```
 ### Drain NodeGroups
 
-You can use `drain_node_groups` to define which nodegroup want to drain nodegroup as `eksctl drain nodegroup`.
+You can use `drain_node_groups` to declare which nodegroup(s) to be drained with `eksctl drain nodegroup`.
 
 ```HCL
 provider "eksctl" {}
@@ -249,7 +249,6 @@ resource "eksctl_cluster" "vpcreuse1" {
     ng1 = true,
     ng2 = false,
   }
-
 ```
 ```console
 > kubectl get no
