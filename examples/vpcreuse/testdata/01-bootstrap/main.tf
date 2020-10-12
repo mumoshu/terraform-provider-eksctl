@@ -28,6 +28,9 @@ resource "eksctl_cluster" "vpcreuse1" {
   eksctl_bin = "eksctl-0.20.0"
   name = "vpcreuse1"
   region = "us-east-2"
+  tags = {
+    foo = "bar"
+  }
   vpc_id = var.vpc_id
   spec = <<EOS
 
