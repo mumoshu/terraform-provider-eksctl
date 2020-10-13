@@ -20,6 +20,40 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	cluster, clusterConfig := set.Cluster, set.ClusterConfig
 
+	updateBy := func(args []string, harmlessErrors []string) func() error {
+		return func() error {
+			eksctlCmdToLog := fmt.Sprintf("eksctl-%s", strings.Join(args, "-"))
+
+			args = append(args, "-f", "-")
+			cmd, err := newEksctlCommand(cluster, args...)
+			if err != nil {
+				return fmt.Errorf("creating %s command: %w", eksctlCmdToLog, err)
+			}
+
+			cmd.Stdin = bytes.NewReader(clusterConfig)
+
+			if r, err := resource.Run(cmd); err != nil {
+				lines := strings.Split(err.Error(), "\n")
+				lastLine := lines[len(lines)-1]
+				if lastLine == "" && len(lines) > 1 {
+					lastLine = lines[len(lines)-2]
+				}
+				for _, h := range harmlessErrors {
+					log.Printf("Checking if this is a harmless error while running %s: error is %q, checking against %q", eksctlCmdToLog, lastLine, h)
+
+					if strings.HasPrefix(lastLine, h) {
+						log.Printf("Ignoring harmless error while running %s: %v", eksctlCmdToLog, lastLine)
+
+						return nil
+					}
+				}
+				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s\n\nOUTPUT:\n%s", err, string(clusterConfig), r.Output)
+			}
+
+			return nil
+		}
+	}
+
 	createNew := func(kind string, extraArgs []string, harmlessErrors []string) func() error {
 		return func() error {
 			args := []string{"create", kind, "-f", "-"}
@@ -192,6 +226,11 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 	}
 
 	tasks := []func() error{
+		// See https://eksctl.io/usage/cluster-upgrade/ for the cluster upgrade process
+		updateBy([]string{"upgrade", "cluster"}, nil),
+		updateBy([]string{"utils", "update-kube-proxy"}, nil),
+		updateBy([]string{"utils", "update-aws-node"}, nil),
+		updateBy([]string{"utils", "update-coredns"}, nil),
 		createNew("nodegroup", nil, nil),
 		associateIAMOIDCProvider(),
 		createNew("iamserviceaccount", []string{"--approve"}, nil),
