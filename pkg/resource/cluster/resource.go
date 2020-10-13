@@ -120,6 +120,13 @@ func ResourceCluster() *schema.Resource {
 				Optional: true,
 				Default:  DefaultVersion,
 			},
+			// Tags is the metadata.tags in the cluster config
+			KeyTags: {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Default:  map[string]interface{}{},
+			},
 			// revision is the manually bumped revision number of the cluster.
 			// Increment this so that any changes made to `spec` are deployed via a blue-green cluster deployment.
 			KeyRevision: {

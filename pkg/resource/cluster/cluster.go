@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -17,6 +18,7 @@ const KeyName = "name"
 const KeyRegion = "region"
 const KeyAPIVersion = "api_version"
 const KeyVersion = "version"
+const KeyTags = "tags"
 const KeyRevision = "revision"
 const KeySpec = "spec"
 const KeyBin = "eksctl_bin"
@@ -210,6 +212,18 @@ func (m *Manager) PrepareClusterSet(d *schema.ResourceData, optNewId ...string) 
 		return nil, fmt.Errorf("planning listener changes: %v", err)
 	}
 
+	tagsJson := "{}"
+	if v := d.Get(KeyTags); v != nil {
+		if tags, ok := v.(map[string]interface{}); ok {
+			tagsJsonBs, err := json.Marshal(tags)
+			if err != nil {
+				return nil, fmt.Errorf("marshalling eksctl_cluster tags to json: %w", err)
+			}
+
+			tagsJson = string(tagsJsonBs)
+		}
+	}
+
 	seedClusterConfig := []byte(fmt.Sprintf(`
 apiVersion: %s
 kind: ClusterConfig
@@ -218,9 +232,10 @@ metadata:
   name: %q
   region: %q
   version: %q
+  tags: %s
 
 %s
-`, a.APIVersion, clusterName, a.Region, a.Version, specStr))
+`, a.APIVersion, clusterName, a.Region, a.Version, tagsJson, specStr))
 
 	c := EksctlClusterConfig{
 		VPC: VPC{
