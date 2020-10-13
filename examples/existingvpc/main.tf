@@ -272,9 +272,7 @@ resource "eksctl_courier_alb" "my_alb_courier" {
 resource "helmfile_release_set" "mystack1" {
   content = file("./helmfile.yaml")
   environment = "default"
-  environment_variables = {
-    KUBECONFIG = eksctl_cluster.red.kubeconfig_path
-  }
+  kubeconfig = eksctl_cluster.red.kubeconfig_path
   depends_on = [
     eksctl_cluster.red,
   ]

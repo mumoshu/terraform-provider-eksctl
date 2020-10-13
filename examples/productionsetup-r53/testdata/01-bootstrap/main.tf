@@ -185,9 +185,7 @@ EOS
 resource "helmfile_release_set" "r53blue_myapp_v1" {
   content = file("./helmfile.yaml")
   environment = "default"
-  environment_variables = {
-    KUBECONFIG = eksctl_cluster.r53blue.kubeconfig_path
-  }
+  kubeconfig = eksctl_cluster.r53blue.kubeconfig_path
   depends_on = [
     eksctl_cluster.r53blue,
   ]

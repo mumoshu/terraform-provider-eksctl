@@ -436,9 +436,7 @@ resource "eksctl_cluster" "green" {
 resource "helmfile_release_set" "myapps" {
   content = file("./helmfile.yaml")
   environment = "default"
-  environment_variables = {
-    KUBECONFIG = eksctl_cluster.blue.kubeconfig_path
-  }
+  kubeconfig = eksctl_cluster.blue.kubeconfig_path
   depends_on = [
     eksctl_cluster.blue
   ]
@@ -478,10 +476,8 @@ the cluster is successfully updated:
 resource "helmfile_release_set" "myapps" {
   content = file("./helmfile.yaml")
   environment = "default"
-  environment_variables = {
     # It was `eksctl_cluster.blue.kubeconfig_path` before
-    KUBECONFIG = eksctl_cluster.green.kubeconfig_path
-  }
+  kubeconfig = eksctl_cluster.green.kubeconfig_path
   depends_on = [
     # This was eksctl_cluster.blue before the update
     eksctl_cluster.green
@@ -622,10 +618,8 @@ the cluster is successfully updated:
 resource "helmfile_release_set" "myapps" {
   content = file("./helmfile.yaml")
   environment = "default"
-  environment_variables = {
-    # It was `eksctl_cluster.blue.kubeconfig_path` before
-    KUBECONFIG = eksctl_cluster.green.kubeconfig_path
-  }
+  # It was `eksctl_cluster.blue.kubeconfig_path` before
+  kubeconfig = eksctl_cluster.green.kubeconfig_path
   depends_on = [
     # This was eksctl_cluster.blue before the update
     eksctl_cluster.green

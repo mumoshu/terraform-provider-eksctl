@@ -659,9 +659,7 @@ output "kubeconfig_path" {
 resource "helmfile_release_set" "mystack1" {
   content = file("./helmfile.yaml")
   environment = "default"
-  environment_variables = {
-    KUBECONFIG = eksctl_cluster_deployment.primary.kubeconfig_path
-  }
+  kubeconfig = eksctl_cluster_deployment.primary.kubeconfig_path
   depends_on = [
     eksctl_cluster_deployment.primary,
   ]
