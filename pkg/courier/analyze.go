@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func MetricsToAnalyzers(region string, ms []Metric) ([]*Analyzer, error) {
+func MetricsToAnalyzers(region, profile string, ms []Metric) ([]*Analyzer, error) {
 	var analyzers []*Analyzer
 
 	for _, m := range ms {
@@ -22,7 +22,16 @@ func MetricsToAnalyzers(region string, ms []Metric) ([]*Analyzer, error) {
 
 		switch m.Provider {
 		case "cloudwatch":
-			s := awsclicompat.NewSession(region)
+			if m.AWSRegion != "" {
+				region = m.AWSRegion
+			}
+
+			if m.AWSProfile != "" {
+				profile = m.AWSProfile
+			}
+
+			s := awsclicompat.NewSession(region, profile)
+
 			s.Config.Endpoint = aws.String(m.Address)
 			c := cloudwatch.New(s)
 			provider = metrics.NewCloudWatchProvider(c, metrics.ProviderOpts{

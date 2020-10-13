@@ -15,7 +15,7 @@ func (m *Manager) importCluster(d *schema.ResourceData) (*schema.ResourceData, e
 
 	d.SetId(newClusterID())
 
-	getCluster, err := newEksctlCommandFromResource(d, "get", "cluster", "-o", "json", "--name", clusterName)
+	getCluster, err := newEksctlCommandFromResourceWithRegionAndProfile(d, "get", "cluster", "-o", "json", "--name", clusterName)
 	if err != nil {
 		return nil, fmt.Errorf("getting cluster %s:: %w", clusterName, err)
 	}

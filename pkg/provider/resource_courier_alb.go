@@ -6,8 +6,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster"
 	"golang.org/x/sync/errgroup"
 	"log"
 	"strconv"
@@ -16,12 +16,7 @@ import (
 )
 
 func deleteCourierALB(d *schema.ResourceData) error {
-	var region string
-	if v := d.Get("region"); v != nil {
-		region = v.(string)
-	}
-
-	sess := awsclicompat.NewSession(region)
+	sess := cluster.AWSSessionFromResourceData(d)
 
 	if v := d.Get("address"); v != nil {
 		sess.Config.Endpoint = aws.String(v.(string))
@@ -67,12 +62,7 @@ func deleteCourierALB(d *schema.ResourceData) error {
 }
 
 func createOrUpdateCourierALB(d *schema.ResourceData) error {
-	var region string
-	if v := d.Get("region"); v != nil {
-		region = v.(string)
-	}
-
-	sess := awsclicompat.NewSession(region)
+	sess := cluster.AWSSessionFromResourceData(d)
 
 	if v := d.Get("address"); v != nil {
 		sess.Config.Endpoint = aws.String(v.(string))
@@ -214,8 +204,10 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 
 		data := courier.ListerStatusToTemplateData(l)
 
+		region, profile := cluster.GetAWSRegionAndProfile(d)
+
 		e.Go(func() error {
-			return courier.Analyze(errctx, region, l.Metrics, data)
+			return courier.Analyze(errctx, region, profile, l.Metrics, data)
 		})
 
 		if err := e.Wait(); err != nil {

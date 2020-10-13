@@ -28,7 +28,7 @@ func doApplyKubernetesManifests(cluster *Cluster, id string) error {
 
 	clusterName := cluster.Name + "-" + id
 
-	writeKubeconfigCmd, err := newEksctlCommand(cluster, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
+	writeKubeconfigCmd, err := newEksctlCommandWithAWSProfile(cluster, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
 	if err != nil {
 		return fmt.Errorf("creating eksctl-utils-write-kubeconfig command: %w", err)
 	}

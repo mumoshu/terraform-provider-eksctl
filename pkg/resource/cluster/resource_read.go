@@ -12,6 +12,7 @@ func ReadCluster(d Read) (*Cluster, error) {
 	a.KubectlBin = d.Get(KeyKubectlBin).(string)
 	a.Name = d.Get(KeyName).(string)
 	a.Region = d.Get(KeyRegion).(string)
+	a.Profile = d.Get(KeyProfile).(string)
 	a.Spec = d.Get(KeySpec).(string)
 
 	a.APIVersion = d.Get(KeyAPIVersion).(string)

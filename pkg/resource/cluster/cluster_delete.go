@@ -29,7 +29,7 @@ func (m *Manager) deleteCluster(d *schema.ResourceData) error {
 		return err
 	}
 
-	cmd, err := newEksctlCommand(cluster, args...)
+	cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
 	if err != nil {
 		return fmt.Errorf("creating eksctl-delete command: %w", err)
 	}

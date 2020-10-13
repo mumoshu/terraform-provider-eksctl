@@ -80,12 +80,12 @@ func DoGradualTrafficShift(ctx context.Context, svc elbv2iface.ELBV2API, l Liste
 	return nil
 }
 
-func Analyze(ctx context.Context, region string, metrics []Metric, data interface{}) error {
+func Analyze(ctx context.Context, region, profile string, metrics []Metric, data interface{}) error {
 	var analyzers []*Analyzer
 	{
 		var err error
 
-		analyzers, err = MetricsToAnalyzers(region, metrics)
+		analyzers, err = MetricsToAnalyzers(region, profile, metrics)
 		if err != nil {
 			return err
 		}

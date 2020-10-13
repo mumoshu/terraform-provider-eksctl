@@ -9,6 +9,16 @@ import (
 )
 
 var MetricResourceSchema = map[string]*schema.Schema{
+	"aws_region": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  "",
+	},
+	"aws_profile": {
+		Type:     schema.TypeString,
+		Optional: true,
+		Default:  "",
+	},
 	"name": {
 		Type:     schema.TypeString,
 		Required: true,
@@ -81,6 +91,16 @@ func ResourceALB() *schema.Resource {
 			return nil
 		},
 		Schema: map[string]*schema.Schema{
+			"region": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
+			"profile": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
 			"address": {
 				Type:     schema.TypeString,
 				Optional: true,

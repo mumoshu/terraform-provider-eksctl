@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"golang.org/x/sync/errgroup"
 	"log"
@@ -13,7 +12,9 @@ import (
 )
 
 func graduallyShiftTraffic(set *ClusterSet, opts courier.CanaryOpts) error {
-	svc := elbv2.New(awsclicompat.NewSession(set.Cluster.Region))
+	cluster := set.Cluster
+
+	svc := elbv2.New(AWSSessionFromCluster(cluster))
 
 	listenerStatuses := set.ListenerStatuses
 
@@ -22,7 +23,7 @@ func graduallyShiftTraffic(set *ClusterSet, opts courier.CanaryOpts) error {
 	{
 		var err error
 
-		m.Analyzers, err = courier.MetricsToAnalyzers(set.Cluster.Region, set.Cluster.Metrics)
+		m.Analyzers, err = courier.MetricsToAnalyzers(cluster.Region, cluster.Profile, cluster.Metrics)
 		if err != nil {
 			return err
 		}

@@ -25,7 +25,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 			eksctlCmdToLog := fmt.Sprintf("eksctl-%s", strings.Join(args, "-"))
 
 			args = append(args, "-f", "-")
-			cmd, err := newEksctlCommand(cluster, args...)
+			cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
 			if err != nil {
 				return fmt.Errorf("creating %s command: %w", eksctlCmdToLog, err)
 			}
@@ -58,7 +58,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		return func() error {
 			args := []string{"create", kind, "-f", "-"}
 			args = append(args, extraArgs...)
-			cmd, err := newEksctlCommand(cluster, args...)
+			cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
 			if err != nil {
 				return fmt.Errorf("creating eksctl-create command: %w", err)
 			}
@@ -91,7 +91,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		return func() error {
 			args := append([]string{"delete", kind, "-f", "-", "--only-missing"}, extraArgs...)
 
-			cmd, err := newEksctlCommand(cluster, args...)
+			cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
 			if err != nil {
 				return fmt.Errorf("creating eksctl-delete command: %w", err)
 			}
@@ -123,7 +123,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	associateIAMOIDCProvider := func() func() error {
 		return func() error {
-			cmd, err := newEksctlCommand(cluster, "utils", "associate-iam-oidc-provider", "-f", "-", "--approve")
+			cmd, err := newEksctlCommandWithAWSProfile(cluster, "utils", "associate-iam-oidc-provider", "-f", "-", "--approve")
 			if err != nil {
 				return fmt.Errorf("creating eksctl-utils-associate-iam-oidc-provider command: %w", err)
 			}
@@ -151,7 +151,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 				return nil
 			}
 
-			cmd, err := newEksctlCommand(cluster, "enable", "repo", "-f", "-")
+			cmd, err := newEksctlCommandWithAWSProfile(cluster, "enable", "repo", "-f", "-")
 			if err != nil {
 				return fmt.Errorf("creating eksctl-enable-repo command: %w", err)
 			}
@@ -209,7 +209,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 				if v == false {
 					opt = append(opt, "--undo")
 				}
-				cmd, err := newEksctlCommand(cluster, opt...)
+				cmd, err := newEksctlCommandWithAWSProfile(cluster, opt...)
 
 				if err != nil {
 					return fmt.Errorf("creating eksctl drain command: %w", err)

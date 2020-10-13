@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/autoscaling"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"log"
 	"strings"
 )
@@ -16,7 +15,7 @@ func doAttachAutoScalingGroupsToTargetGroups(set *ClusterSet) error {
 		return nil
 	}
 
-	cfn := cloudformation.New(awsclicompat.NewSession(set.Cluster.Region))
+	cfn := cloudformation.New(AWSSessionFromCluster(set.Cluster))
 
 	var stackSummaries []*cloudformation.StackSummary
 
@@ -49,7 +48,7 @@ func doAttachAutoScalingGroupsToTargetGroups(set *ClusterSet) error {
 
 	log.Printf("Finding stacks whose name is prefixd with %q from %d stack summaries", stackNamePrefix, len(stackSummaries))
 
-	asSvc := autoscaling.New(awsclicompat.NewSession(set.Cluster.Region))
+	asSvc := autoscaling.New(AWSSessionFromCluster(set.Cluster))
 
 	for _, s := range stackSummaries {
 

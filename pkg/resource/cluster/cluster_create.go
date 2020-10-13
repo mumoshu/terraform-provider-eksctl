@@ -29,7 +29,7 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 		return nil, err
 	}
 
-	cmd, err := newEksctlCommand(cluster, "create", "cluster", "-f", "-")
+	cmd, err := newEksctlCommandWithAWSProfile(cluster, "create", "cluster", "-f", "-")
 	if err != nil {
 		return nil, fmt.Errorf("creating eksctl-create command: %w", err)
 	}
@@ -92,7 +92,7 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 		d.Set(KeyKubeconfigPath, path)
 	}
 
-	cmd, err := newEksctlCommandFromResource(d, "utils", "write-kubeconfig", "--cluster", clusterName, "--region", region)
+	cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, "utils", "write-kubeconfig", "--cluster", clusterName)
 	if err != nil {
 		return fmt.Errorf("creating eksctl-utils-write-kubeconfig command: %w", err)
 	}

@@ -6,7 +6,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/elbv2"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"log"
 	"sort"
@@ -32,7 +31,7 @@ func planListenerChanges(cluster *Cluster, oldId, newId string) (ListenerStatuse
 		return nil, nil
 	}
 
-	svc := elbv2.New(awsclicompat.NewSession(cluster.Region))
+	svc := elbv2.New(AWSSessionFromCluster(cluster))
 
 	//oldClusterName := getClusterName(cluster, oldId)
 	//newClusterName := getClusterName(cluster, newId)

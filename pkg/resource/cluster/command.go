@@ -5,13 +5,23 @@ import (
 	"os/exec"
 )
 
-func newEksctlCommandFromResource(resource Read, args ...string) (*exec.Cmd, error) {
+func newEksctlCommandFromResourceWithRegionAndProfile(resource Read, args ...string) (*exec.Cmd, error) {
 	eksctlBin := resource.Get(KeyBin).(string)
 	eksctlVersion := resource.Get(KeyEksctlVersion).(string)
 
 	bin, err := prepareEksctlBinaryInternal(eksctlBin, eksctlVersion)
 	if err != nil {
 		return nil, fmt.Errorf("preparing eksctl binary: %w", err)
+	}
+
+	region, profile := GetAWSRegionAndProfile(resource)
+
+	if region != "" {
+		args = append(args, "--region", region)
+	}
+
+	if profile != "" {
+		args = append(args, "--profile", profile)
 	}
 
 	cmd := exec.Command(*bin, args...)
@@ -28,4 +38,15 @@ func newEksctlCommand(cluster *Cluster, args ...string) (*exec.Cmd, error) {
 	cmd := exec.Command(*eksctlBin, args...)
 
 	return cmd, nil
+}
+
+// We don't add `--region` flag as this provider prefers metadata.region in cluster.yaml to specify the region
+func newEksctlCommandWithAWSProfile(cluster *Cluster, args ...string) (*exec.Cmd, error) {
+	_, profile := cluster.Region, cluster.Profile
+
+	if profile != "" {
+		args = append(args, "--profile", profile)
+	}
+
+	return newEksctlCommand(cluster, args...)
 }

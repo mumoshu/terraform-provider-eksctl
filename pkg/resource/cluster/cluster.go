@@ -16,6 +16,7 @@ import (
 
 const KeyName = "name"
 const KeyRegion = "region"
+const KeyProfile = "profile"
 const KeyAPIVersion = "api_version"
 const KeyVersion = "version"
 const KeyTags = "tags"
@@ -56,6 +57,7 @@ type Cluster struct {
 	KubectlBin string
 	Name       string
 	Region     string
+	Profile    string
 	APIVersion string
 	Version    string
 	VPCID      string

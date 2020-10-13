@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"log"
 )
 
@@ -15,7 +14,7 @@ func createVPCResourceTags(cluster *Cluster, clusterName ClusterName) error {
 		return nil
 	}
 
-	ec2session := ec2.New(awsclicompat.NewSession(cluster.Region))
+	ec2session := ec2.New(AWSSessionFromCluster(cluster))
 
 	tagKey := fmt.Sprintf("kubernetes.io/cluster/%s", clusterName)
 	tagValue := "shared"
@@ -63,7 +62,7 @@ func deleteVPCResourceTags(cluster *Cluster, clusterName ClusterName) error {
 		return nil
 	}
 
-	ec2session := ec2.New(awsclicompat.NewSession(cluster.Region))
+	ec2session := ec2.New(AWSSessionFromCluster(cluster))
 
 	tagKey := fmt.Sprintf("kubernetes.io/cluster/%s", clusterName)
 

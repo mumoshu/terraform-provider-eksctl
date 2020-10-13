@@ -37,7 +37,7 @@ func getLiveClusterInfo(d *schema.ResourceData) (*LiveClusterInfo, error) {
 		"-o", "json",
 	}
 
-	cmd, err := newEksctlCommand(cluster, args...)
+	cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -95,6 +95,11 @@ func ResourceCluster() *schema.Resource {
 				ForceNew:    true,
 				DefaultFunc: schema.EnvDefaultFunc("AWS_DEFAULT_REGION", nil),
 			},
+			KeyProfile: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
 			KeyName: {
 				Type:     schema.TypeString,
 				Required: true,
@@ -336,6 +341,11 @@ func ResourceClusterDeployment() *schema.Resource {
 				Required:    true,
 				ForceNew:    true,
 				DefaultFunc: schema.EnvDefaultFunc("AWS_DEFAULT_REGION", nil),
+			},
+			KeyProfile: {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
 			},
 			KeyName: {
 				Type:     schema.TypeString,

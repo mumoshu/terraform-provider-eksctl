@@ -111,11 +111,13 @@ func LoadMetrics(metrics []interface{}) ([]Metric, error) {
 		}
 
 		metric := Metric{
-			Address:  m["address"].(string),
-			Query:    m["query"].(string),
-			Max:      max,
-			Min:      min,
-			Interval: interval,
+			Address:    m["address"].(string),
+			Query:      m["query"].(string),
+			AWSRegion:  m["aws_region"].(string),
+			AWSProfile: m["aws_profile"].(string),
+			Max:        max,
+			Min:        min,
+			Interval:   interval,
 		}
 
 		if v := m["provider"]; v != nil {

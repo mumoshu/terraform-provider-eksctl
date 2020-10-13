@@ -3,9 +3,9 @@ package cluster
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/aws/aws-sdk-go/service/resourcegroupstaggingapi"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"log"
 )
 
@@ -14,8 +14,8 @@ const (
 	TagKeyClusterNamePrefix = "tf-eksctl/cluster"
 )
 
-func getTargetGroupARNs(region, clusterNamePrefixy string) ([]string, error) {
-	api := resourcegroupstaggingapi.New(awsclicompat.NewSession(region))
+func getTargetGroupARNs(sess *session.Session, clusterNamePrefixy string) ([]string, error) {
+	api := resourcegroupstaggingapi.New(sess)
 
 	var token *string
 
@@ -54,7 +54,7 @@ func getTargetGroupARNs(region, clusterNamePrefixy string) ([]string, error) {
 }
 
 func deleteTargetGroups(set *ClusterSet) error {
-	elb := elbv2.New(awsclicompat.NewSession(set.Cluster.Region))
+	elb := elbv2.New(AWSSessionFromCluster(set.Cluster))
 
 	for _, tgARN := range set.Cluster.TargetGroupARNs {
 		log.Printf("Deleting target group %s for %s", tgARN, set.ClusterName)
