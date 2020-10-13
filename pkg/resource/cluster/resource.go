@@ -126,6 +126,7 @@ func ResourceCluster() *schema.Resource {
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
 				Default:  map[string]interface{}{},
+				ForceNew: true,
 			},
 			// revision is the manually bumped revision number of the cluster.
 			// Increment this so that any changes made to `spec` are deployed via a blue-green cluster deployment.
