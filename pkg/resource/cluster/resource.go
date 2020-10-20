@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"runtime/debug"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -17,7 +18,13 @@ func ResourceCluster() *schema.Resource {
 		DisableClusterNameSuffix: true,
 	}
 	return &schema.Resource{
-		Create: func(d *schema.ResourceData, meta interface{}) error {
+		Create: func(d *schema.ResourceData, meta interface{}) (finalErr error) {
+			defer func() {
+				if err := recover(); err != nil {
+					finalErr = fmt.Errorf("unhandled error: %v\n%s", err, debug.Stack())
+				}
+			}()
+
 			set, err := m.createCluster(d)
 			if err != nil {
 				return fmt.Errorf("creating cluster: %w", err)
@@ -27,7 +34,13 @@ func ResourceCluster() *schema.Resource {
 
 			return nil
 		},
-		CustomizeDiff: func(d *schema.ResourceDiff, meta interface{}) error {
+		CustomizeDiff: func(d *schema.ResourceDiff, meta interface{}) (finalErr error) {
+			defer func() {
+				if err := recover(); err != nil {
+					finalErr = fmt.Errorf("unhandled error: %v\n%s", err, debug.Stack())
+				}
+			}()
+
 			if err := m.planCluster(&DiffReadWrite{D: d}); err != nil {
 				return fmt.Errorf("diffing cluster: %w", err)
 			}
@@ -50,7 +63,13 @@ func ResourceCluster() *schema.Resource {
 
 			return nil
 		},
-		Update: func(d *schema.ResourceData, meta interface{}) error {
+		Update: func(d *schema.ResourceData, meta interface{}) (finalErr error) {
+			defer func() {
+				if err := recover(); err != nil {
+					finalErr = fmt.Errorf("unhandled error: %v\n%s", err, debug.Stack())
+				}
+			}()
+
 			log.Printf("udapting existing cluster...")
 
 			if err := m.updateCluster(d); err != nil {
@@ -59,7 +78,13 @@ func ResourceCluster() *schema.Resource {
 
 			return nil
 		},
-		Delete: func(d *schema.ResourceData, meta interface{}) error {
+		Delete: func(d *schema.ResourceData, meta interface{}) (finalErr error) {
+			defer func() {
+				if err := recover(); err != nil {
+					finalErr = fmt.Errorf("unhandled error: %v\n%s", err, debug.Stack())
+				}
+			}()
+
 			if err := m.deleteCluster(d); err != nil {
 				return err
 			}
@@ -68,7 +93,13 @@ func ResourceCluster() *schema.Resource {
 
 			return nil
 		},
-		Read: func(d *schema.ResourceData, meta interface{}) error {
+		Read: func(d *schema.ResourceData, meta interface{}) (finalErr error) {
+			defer func() {
+				if err := recover(); err != nil {
+					finalErr = fmt.Errorf("unhandled error: %v\n%s", err, debug.Stack())
+				}
+			}()
+
 			if err := m.readCluster(d); err != nil {
 				return fmt.Errorf("reading cluster: %w", err)
 			}

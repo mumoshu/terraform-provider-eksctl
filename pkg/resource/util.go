@@ -75,9 +75,13 @@ func Run(cmd *exec.Cmd) (*CommandResult, error) {
 	// Execute the command to completion
 	runErr := cmd.Run()
 
+	logDebug("closing pipe writer", strings.Join(cmd.Args, " "))
+
 	if err := pw.Close(); err != nil {
 		return nil, err
 	}
+
+	logDebug("waiting for copying output", strings.Join(cmd.Args, " "))
 
 	select {
 	case <-copyDoneCh:
