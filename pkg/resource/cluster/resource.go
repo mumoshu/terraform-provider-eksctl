@@ -189,7 +189,8 @@ func ResourceCluster() *schema.Resource {
 			},
 			KeyKubeconfigPath: {
 				Type:     schema.TypeString,
-				Computed: true,
+				Optional: true,
+				Default:  "",
 			},
 			// spec is the string containing the part of eksctl cluster.yaml
 			// Over time the provider adds HCL-native syntax for any of cluster.yaml items.
