@@ -33,6 +33,8 @@ const KeyVPCID = "vpc_id"
 const KeyManifests = "manifests"
 const KeyMetrics = "metrics"
 const KeyDrainNodeGroups = "drain_node_groups"
+const KeyIAMIdentityMapping = "iam_identity_mapping"
+const KeyAWSAuthConfigMap = "aws_auth_configmap"
 const (
 	KeyTargetGroupARNs = "target_group_arns"
 )
