@@ -25,7 +25,7 @@ variable "vpc_subnet_groups" {
 }
 
 resource "eksctl_cluster" "vpcreuse1" {
-  eksctl_bin = "eksctl-0.20.0"
+  eksctl_version = "0.29.2"
   name = "vpcreuse1"
   region = "us-east-2"
   tags = {

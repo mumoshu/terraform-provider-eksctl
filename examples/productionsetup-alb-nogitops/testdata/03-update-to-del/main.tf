@@ -95,7 +95,7 @@ resource "aws_lb_target_group" "green" {
 }
 
 resource "eksctl_cluster" "blue" {
-  eksctl_version = "0.27.0"
+  eksctl_version = "0.29.2"
   name = "blue"
   region = var.region
   api_version = "eksctl.io/v1alpha5"
