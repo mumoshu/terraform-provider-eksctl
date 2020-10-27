@@ -199,6 +199,7 @@ func runCreateIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
 		if err != nil {
 			return fmt.Errorf("running create imaidentitymapping command: %w", err)
 		}
+
 		log.Printf("eksctl creat iamidentitymapping response: %v", res)
 	}
 	return nil
