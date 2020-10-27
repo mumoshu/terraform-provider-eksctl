@@ -153,7 +153,6 @@ func createIAMIdentityMapping(d *schema.ResourceData, cluster *Cluster) error {
 	}
 
 	if d.Get(KeyIAMIdentityMapping) != nil {
-
 		values := d.Get(KeyIAMIdentityMapping).(*schema.Set)
 		if err := runCreateIAMIdentityMapping(values, cluster); err != nil {
 			return fmt.Errorf("creating create  imaidentitymapping command: %w", err)
