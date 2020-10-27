@@ -261,7 +261,9 @@ ip-10-0-5-72.us-east-2.compute.internal   Ready                      <none>   4d
 
 ## Add aws-auth ConfigMap
 
-You can use `iam_identity_mapping` to grant additional AWS users or roles to operate eks cluster with  aws-auth ConfigMap. 
+You can use `iam_identity_mapping` to grant additional AWS users or roles to operate the EKS cluster by letting the provider to update the `aws-auth` ConfigMap.
+
+To get started, add one or more `iam_identity_mapping` block(s) like in the below example:
 
 ```HCL
 provider "eksctl" {}
