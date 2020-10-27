@@ -216,13 +216,29 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 				}
 
 				if err := resource.Update(cmd, d); err != nil {
-					return fmt.Errorf("Drain Error: %v", err )
+					return fmt.Errorf("Drain Error: %v", err)
 				}
 			}
 
 			return nil
 		}
 
+	}
+
+	updateIAMIdentityMapping := func() func() error {
+		return func() error {
+			d.HasChange(KeyIAMIdentityMapping)
+			a, b := d.GetChange(KeyIAMIdentityMapping)
+
+			if err := runCreateIAMIdentityMapping(b.(*schema.Set).Difference(a.(*schema.Set)), cluster); err != nil {
+				return fmt.Errorf("CreateIAMIdentityMapping Error: %v", err)
+			}
+
+			if err := runDeleteIAMIdentityMapping(a.(*schema.Set).Difference(b.(*schema.Set)), cluster); err != nil {
+				return fmt.Errorf("DeleteIAMIdentityMapping Error: %v", err)
+			}
+			return nil
+		}
 	}
 
 	tasks := []func() error{
@@ -237,6 +253,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		createNew("fargateprofile", nil, harmlessFargateProfileCreationErrors),
 		enableRepo(),
 		draineNodegroup(),
+		updateIAMIdentitymapping(),
 		deleteMissing("nodegroup", []string{"--drain", "--approve"}, nil),
 		deleteMissing("iamserviceaccount", []string{"--approve"}, nil),
 		// eksctl delete fargate profile doens't has --only-missing command

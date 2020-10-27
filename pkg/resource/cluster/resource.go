@@ -226,6 +226,53 @@ func ResourceCluster() *schema.Resource {
 					Type: schema.TypeBool,
 				},
 			},
+			KeyIAMIdentityMapping: {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"iamarn": {
+							Required: true,
+							Type:     schema.TypeString,
+						},
+						"username": {
+							Required: true,
+							Type:     schema.TypeString,
+						},
+						"groups": {
+							Required: true,
+							Type:     schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
+			KeyAWSAuthConfigMap: {
+				Type:     schema.TypeSet,
+				Computed: true,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"iamarn": {
+							Required: true,
+							Type:     schema.TypeString,
+						},
+						"username": {
+							Required: true,
+							Type:     schema.TypeString,
+						},
+						"groups": {
+							Required: true,
+							Type:     schema.TypeList,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
 			resource.KeyOutput: {
 				Type:     schema.TypeString,
 				Computed: true,

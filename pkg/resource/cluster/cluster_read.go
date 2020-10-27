@@ -1,10 +1,16 @@
 package cluster
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"log"
 	"os"
+	"sort"
+	"strings"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 )
 
 type Read interface {
@@ -64,6 +70,9 @@ func (m *Manager) readCluster(d ReadWrite) error {
 			}
 		}
 	}
+	if err := readIAMIdentityMapping(d, cluster); err != nil {
+		return fmt.Errorf("reading aws-auth via eksctl get iamidentitymaping: %w", err)
+	}
 
 	return nil
 }
@@ -107,4 +116,67 @@ func (m *Manager) planCluster(d *DiffReadWrite) error {
 	}
 
 	return nil
+}
+
+func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
+	iams, err := runGetIAMIdentityMapping(cluster)
+	if err != nil {
+		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
+	}
+
+	current := make([]map[string]interface{}, 0)
+
+	for _, v := range d.Get(KeyAWSAuthConfigMap).(*schema.Set).List() {
+		current = append(current, v.(map[string]interface{}))
+	}
+
+	// sort for diff
+	sort.Slice(current, func(i, j int) bool { return current[i]["iamarn"].(string) < current[j]["iamarn"].(string) })
+	sort.Slice(iams, func(i, j int) bool { return iams[i]["iamarn"].(string) < iams[j]["iamarn"].(string) })
+
+	if diff := cmp.Diff(iams, current); diff != "" {
+		log.Printf("aws-auth diff remote (-remote +current):\n%s", diff)
+	} else {
+		log.Printf("have diff between remote source and param")
+	}
+
+	return nil
+}
+
+func runGetIAMIdentityMapping(cluster *Cluster) ([]map[string]interface{}, error) {
+
+	//get iamidentitymapping
+	args := []string{
+		"get",
+		"iamidentitymapping",
+		"--cluster",
+		cluster.Name,
+		"-o",
+		"json",
+	}
+	cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
+
+	if err != nil {
+		return nil, fmt.Errorf("creating get imaidentitymapping command: %w", err)
+	}
+	iamJson, err := resource.Run(cmd)
+
+	//replace rolearn and userarn to iamarn
+	iamJson1 := strings.Replace(iamJson.Output, "rolearn", "iamarn", -1)
+	iamJson2 := strings.Replace(iamJson1, "userarn", "iamarn", -1)
+
+	if err != nil {
+		return nil, fmt.Errorf("running get iamidentitymapping : %w", err)
+	}
+
+	var iams []map[string]interface{}
+	if err := json.Unmarshal([]byte(iamJson2), &iams); err != nil {
+		return nil, fmt.Errorf("parse iamidentitymapping : %w", err)
+	}
+
+	return iams, nil
+}
+
+func sortSlice() {
+
 }

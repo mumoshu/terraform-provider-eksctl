@@ -77,7 +77,7 @@ In general, for any non-ephemeral cluster you must set up the following pre-requ
 
 - VPC
 - Public/Private subnets
-- ALB and listener(s) (Only when you use blue-green cluster deployment) 
+- ALB and listener(s) (Only when you use blue-green cluster deployment)
 
 ### Ephemeral cluster
 
@@ -210,6 +210,7 @@ resource "eksctl_cluster" "primary" {
   EOS
 }
 ```
+
 ### Drain NodeGroups
 
 You can use `drain_node_groups` to declare which nodegroup(s) to be drained with `eksctl drain nodegroup`.
@@ -250,6 +251,7 @@ resource "eksctl_cluster" "vpcreuse1" {
     ng2 = false,
   }
 ```
+
 ```console
 > kubectl get no
 NAME                                      STATUS                     ROLES    AGE    VERSION
@@ -257,7 +259,89 @@ ip-10-0-4-28.us-east-2.compute.internal   Ready,SchedulingDisabled   <none>   4d
 ip-10-0-5-72.us-east-2.compute.internal   Ready                      <none>   4d1h   v1.16.13-eks-ec92d4
 ```
 
+## Add aws-auth ConfigMap
 
+You can use `iam_identity_mapping` to grant additional AWS users or roles to operate the EKS cluster by letting the provider to update the `aws-auth` ConfigMap.
+
+To get started, add one or more `iam_identity_mapping` block(s) like in the below example:
+
+```HCL
+provider "eksctl" {}
+
+locals {
+  iams = [
+    {
+      iamarn   = "arn:aws:iam::123456789012:role/master-eks-role"
+      username = "master-eks-role"
+      groups = [
+        "system:masters"
+      ]
+    },
+    {
+      iamarn   = "arn:aws:iam::123456789012:user/user-admin"
+      username = "user-admin"
+      groups = [
+        "system:masters"
+      ]
+    },
+  ]
+}
+
+resource "eksctl_cluster" "myeks" {
+  name   = "myeks"
+  region = "us-east-1"
+  spec   = <<-EOS
+  iam:
+    withOIDC: true
+    serviceAccounts: []
+  nodeGroups:
+    - name: ng1
+      instanceType: t2.small
+      desiredCapacity: 1
+    - name: ng2
+      instanceType: t2.small
+      desiredCapacity: 1
+  EOS
+
+
+  dynamic "iam_identity_mapping" {
+    for_each = local.iams
+    content {
+      iamarn   = iam_identity_mapping.value["iamarn"]
+      username = iam_identity_mapping.value["username"]
+      groups   = iam_identity_mapping.value["groups"]
+    }
+  }
+}
+
+output aws_auth {
+  value = eksctl_cluster.myeks.aws_auth_configmap
+}
+```
+On each `terraform apply`, the provider compares the current `aws-auth` configmap against the desired configmap contents, and run `eksctl create iamidentitymapping` to create additional mappings and `eksctl delete iamidentitymapping` to delete redundant mappings.
+
+You can confirm the result by running `eksctl get iamidentitymapping`:
+```console
+$ eksctl get iamidentitymapping -c myeks -o yaml
+- groups:
+  - system:bootstrappers
+  - system:nodes
+  rolearn: arn:aws:iam::123456789012:role/eksctl-myeks-nodegroup-ng1-NodeInstanceRole-14SXZWF9IGX6O
+  username: system:node:{{EC2PrivateDNSName}}
+- groups:
+  - system:bootstrappers
+  - system:nodes
+  rolearn: arn:aws:iam::123456789012:role/eksctl-myeks-nodegroup-ng2-NodeInstanceRole-2IGYK2W51ZHJ
+  username: system:node:{{EC2PrivateDNSName}}
+- groups:
+  - system:masters
+  rolearn: arn:aws:iam::123456789012:role/admin-role
+  username: admin-role
+- groups:
+  - system:masters
+  userarn: arn:aws:iam::123456789012:user/user-admin
+  username: user-admin
+```
 
 ## Advanced Features and Use-cases
 
@@ -271,6 +355,7 @@ There's a bunch more settings that helps the app to stay highly available while 
 It's also highly recommended to include `git` configuration and use `eksctl` which includes https://github.com/weaveworks/eksctl/pull/2274 in order to install Flux in an unattended way, so that the cluster has everything deployed on launch. Otherwise blue-green deployments of the cluster doesn't make sense.
 
 Please see the [existingvpc](/examples/existingvpc) example to see how a fully configured eksctl_cluster resource should look like, and the below references for details of each setting.
+
 ### Delete Kubernetes resources before destroy
 
 > This option is available only within `eksctl_cluster_deployment` resource
@@ -322,7 +407,7 @@ resource "eksctl_courier_alb" "my_alb_courier" {
   listener_arn = "<alb listener arn>"
 
   priority = "10"
-  
+
   destination {
     target_group_arn = "<target group arn current>"
 
@@ -650,7 +735,6 @@ resource "eksctl_courier_route53_record" "www" {
   ]
 }
 ```
-
 
 ## Advanced Features
 

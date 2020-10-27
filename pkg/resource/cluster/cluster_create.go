@@ -3,14 +3,15 @@ package cluster
 import (
 	"bytes"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 )
 
 func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
@@ -53,6 +54,10 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	}
 
 	if err := doCheckPodsReadiness(cluster, id); err != nil {
+		return nil, err
+	}
+
+	if err := createIAMIdentityMapping(d, cluster); err != nil {
 		return nil, err
 	}
 
@@ -131,4 +136,101 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 	}
 
 	return nil
+}
+
+func createIAMIdentityMapping(d *schema.ResourceData, cluster *Cluster) error {
+	iams, err := runGetIAMIdentityMapping(cluster)
+	if err != nil {
+		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
+	}
+
+	if len(iams) == 0 {
+		log.Printf("no data from eksctl get iamidentitymapping")
+	} else {
+		if err := d.Set(KeyAWSAuthConfigMap, iams); err != nil {
+			return fmt.Errorf("set aws-auth-configmap from iamidentitymapping : %w", err)
+		}
+	}
+
+	if d.Get(KeyIAMIdentityMapping) != nil {
+		values := d.Get(KeyIAMIdentityMapping).(*schema.Set)
+		if err := runCreateIAMIdentityMapping(values, cluster); err != nil {
+			return fmt.Errorf("creating create  imaidentitymapping command: %w", err)
+		}
+
+		if err := d.Set(KeyIAMIdentityMapping, values); err != nil {
+			return fmt.Errorf("set  imaidentitymapping : %w", err)
+		}
+	}
+
+	return nil
+}
+
+func runCreateIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
+	values := s.List()
+	for _, v := range values {
+		ele := v.(map[string]interface{})
+		args := []string{
+			"create",
+			"iamidentitymapping",
+			"--cluster",
+			cluster.Name,
+			"--arn",
+			ele["iamarn"].(string),
+			"--username",
+			ele["username"].(string),
+		}
+
+		g := ele["groups"]
+		g2 := []string{}
+		for _, v := range g.([]interface{}) {
+			g2 = append(g2, "--group")
+			g2 = append(g2, v.(string))
+		}
+		args = append(args, g2...)
+
+		cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
+
+		if err != nil {
+			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
+		}
+
+		res, err := resource.Run(cmd)
+		if err != nil {
+			return fmt.Errorf("running create imaidentitymapping command: %w", err)
+		}
+
+		log.Printf("eksctl creat iamidentitymapping response: %v", res)
+	}
+	return nil
+}
+
+func runDeleteIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
+	values := s.List()
+	for _, v := range values {
+		ele := v.(map[string]interface{})
+		args := []string{
+			"delete",
+			"iamidentitymapping",
+			"--cluster",
+			cluster.Name,
+			"--arn",
+			ele["iamarn"].(string),
+		}
+
+		cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
+
+		if err != nil {
+			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
+		}
+
+		res, err := resource.Run(cmd)
+		if err != nil {
+			return fmt.Errorf("creating create-iamidentitymapping command: %w", err)
+		}
+
+		log.Printf("-----------res: %v", res)
+	}
+	return nil
+
 }
