@@ -223,6 +223,7 @@ func runDeleteIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
 		if err != nil {
 			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
 		}
+
 		res, err := resource.Run(cmd)
 		if err != nil {
 			return fmt.Errorf("creating create  imaidentitymapping command: %w", err)
