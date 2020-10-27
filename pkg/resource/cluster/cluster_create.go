@@ -139,7 +139,6 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 }
 
 func createIAMIdentityMapping(d *schema.ResourceData, cluster *Cluster) error {
-
 	iams, err := runGetIAMIdentityMapping(cluster)
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
