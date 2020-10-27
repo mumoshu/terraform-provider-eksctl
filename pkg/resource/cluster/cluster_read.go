@@ -119,7 +119,6 @@ func (m *Manager) planCluster(d *DiffReadWrite) error {
 }
 
 func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
-
 	iams, err := runGetIAMIdentityMapping(cluster)
 
 	if err != nil {
