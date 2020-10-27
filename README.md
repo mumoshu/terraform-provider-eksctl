@@ -339,7 +339,7 @@ $ eksctl get iamidentitymapping -c myeks -o yaml
   username: admin-role
 - groups:
   - system:masters
-  rolearn: arn:aws:iam::123456789012:user/user-admin
+  userarn: arn:aws:iam::123456789012:user/user-admin
   username: user-admin
 ```
 
