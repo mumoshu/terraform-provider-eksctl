@@ -316,7 +316,9 @@ output aws_auth {
   value = eksctl_cluster.myeks.aws_auth_configmap
 }
 ```
+On each `terraform apply`, the provider compares the current `aws-auth` configmap against the desired configmap contents, and run `eksctl create iamidentitymapping` to create additional mappings and `eksctl delete iamidentitymapping` to delete redundant mappings.
 
+You can confirm the result by running `eksctl get iamidentitymapping`:
 ```console
 $ eksctl get iamidentitymapping -c myeks -o yaml
 - groups:
