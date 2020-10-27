@@ -120,7 +120,6 @@ func (m *Manager) planCluster(d *DiffReadWrite) error {
 
 func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 	iams, err := runGetIAMIdentityMapping(cluster)
-
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
 	}
