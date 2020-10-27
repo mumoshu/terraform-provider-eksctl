@@ -225,7 +225,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	}
 
-	updateIAMIdentitymapping := func() func() error {
+	updateIAMIdentityMapping := func() func() error {
 		return func() error {
 			d.HasChange(KeyIAMIdentityMapping)
 			a, b := d.GetChange(KeyIAMIdentityMapping)
