@@ -131,6 +131,7 @@ func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 	for _, v := range d.Get(KeyAWSAuthConfigMap).(*schema.Set).List() {
 		current = append(current, v.(map[string]interface{}))
 	}
+
 	// sort for diff
 	sort.Slice(current, func(i, j int) bool { return current[i]["iamarn"].(string) < current[j]["iamarn"].(string) })
 	sort.Slice(iams, func(i, j int) bool { return iams[i]["iamarn"].(string) < iams[j]["iamarn"].(string) })
