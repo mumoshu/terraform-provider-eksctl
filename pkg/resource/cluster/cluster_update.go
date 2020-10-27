@@ -231,7 +231,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 			a, b := d.GetChange(KeyIAMIdentityMapping)
 
 			if err := runCreateIAMIdentityMapping(b.(*schema.Set).Difference(a.(*schema.Set)), cluster); err != nil {
-				return fmt.Errorf("DeleteIAMIdentityMapping Error: %v", err)
+				return fmt.Errorf("CreateIAMIdentityMapping Error: %v", err)
 			}
 
 			if err := runDeleteIAMIdentityMapping(a.(*schema.Set).Difference(b.(*schema.Set)), cluster); err != nil {
