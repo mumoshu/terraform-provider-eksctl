@@ -70,7 +70,6 @@ func (m *Manager) readCluster(d ReadWrite) error {
 			}
 		}
 	}
-	//Do not use d.Set , only for debug.
 	if err := readIAMIdentityMapping(d, cluster); err != nil {
 		return fmt.Errorf("reading aws-auth via eksctl get iamidentitymaping: %w", err)
 	}
