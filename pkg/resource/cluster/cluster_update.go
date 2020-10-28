@@ -47,7 +47,13 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 						return nil
 					}
 				}
-				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s\n\nOUTPUT:\n%s", err, string(clusterConfig), r.Output)
+
+				var output string
+				if r != nil {
+					output = r.Output
+				}
+
+				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s\n\nOUTPUT:\n%s", err, string(clusterConfig), output)
 			}
 
 			return nil
