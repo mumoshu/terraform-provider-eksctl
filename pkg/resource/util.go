@@ -72,6 +72,10 @@ func Run(cmd *exec.Cmd) (*CommandResult, error) {
 
 	logDebug("starting to run eksctl", strings.Join(cmd.Args, " "))
 
+	cmdToLog := fmt.Sprintf("%s %s", cmd.Path, strings.Join(cmd.Args, " "))
+
+	log.Printf("[DEBUG] starting command %q", cmdToLog)
+
 	// Execute the command to completion
 	runErr := cmd.Run()
 
@@ -89,7 +93,7 @@ func Run(cmd *exec.Cmd) (*CommandResult, error) {
 	}
 
 	out := output.String()
-	log.Printf("[DEBUG] command %q: \"%s\"", cmd.Path, out)
+	log.Printf("[DEBUG] command %q finished with output: \"%s\"", cmdToLog, out)
 	var exitStatus int
 	if runErr != nil {
 		switch ee := runErr.(type) {
@@ -99,10 +103,10 @@ func Run(cmd *exec.Cmd) (*CommandResult, error) {
 			waitStatus := ee.Sys().(syscall.WaitStatus)
 			exitStatus = waitStatus.ExitStatus()
 			if exitStatus != 0 {
-				return nil, fmt.Errorf("command %q: %v\n%s", cmd.Path, runErr, out)
+				return nil, fmt.Errorf("running %q: %v\n%s", cmdToLog, runErr, out)
 			}
 		default:
-			return nil, fmt.Errorf("command %q: %v\n%s", cmd.Path, runErr, out)
+			return nil, fmt.Errorf("running %q: %v\n%s", cmdToLog, runErr, out)
 		}
 	}
 

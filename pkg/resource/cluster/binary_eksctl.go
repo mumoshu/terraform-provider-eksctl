@@ -3,6 +3,7 @@ package cluster
 import (
 	"fmt"
 	"github.com/mumoshu/shoal"
+	"log"
 	"path/filepath"
 	"sync"
 )
@@ -14,6 +15,8 @@ func prepareEksctlBinary(cluster *Cluster) (*string, error) {
 }
 
 func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, error) {
+	log.Print("Preparing eksctl binary")
+
 	conf := shoal.Config{
 		Git: shoal.Git{
 			Provider: "go-git",
@@ -25,6 +28,8 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 	installEksctl := eksctlVersion != ""
 
 	if installEksctl {
+		log.Printf("Installing eksctl %s", eksctlVersion)
+
 		conf.Dependencies = append(conf.Dependencies,
 			shoal.Dependency{
 				Rig:     rig,
