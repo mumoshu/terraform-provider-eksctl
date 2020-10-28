@@ -119,6 +119,13 @@ func (m *Manager) planCluster(d *DiffReadWrite) error {
 }
 
 func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
+	iamWithOIDCEnabled, err := cluster.IAMWithOIDCEnabled()
+	if err != nil {
+		return fmt.Errorf("reading iam.withOIDC setting from cluster.yaml: %w", err)
+	} else if !iamWithOIDCEnabled {
+		return nil
+	}
+
 	iams, err := runGetIAMIdentityMapping(cluster)
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)

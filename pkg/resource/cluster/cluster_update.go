@@ -225,6 +225,19 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 
 	}
 
+	whenIAMWithOIDCEnabled := func(f func() error) func() error {
+		return func() error{
+			iamWithOIDCEnabled, err := cluster.IAMWithOIDCEnabled()
+			if err != nil {
+				return fmt.Errorf("reading iam.withOIDC setting from cluster.yaml: %w", err)
+			} else if !iamWithOIDCEnabled {
+				return nil
+			}
+
+			return f()
+		}
+	}
+
 	updateIAMIdentityMapping := func() func() error {
 		return func() error {
 			d.HasChange(KeyIAMIdentityMapping)
@@ -237,6 +250,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 			if err := runDeleteIAMIdentityMapping(a.(*schema.Set).Difference(b.(*schema.Set)), cluster); err != nil {
 				return fmt.Errorf("DeleteIAMIdentityMapping Error: %v", err)
 			}
+
 			return nil
 		}
 	}
@@ -248,14 +262,14 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		updateBy([]string{"utils", "update-aws-node"}, nil),
 		updateBy([]string{"utils", "update-coredns"}, nil),
 		createNew("nodegroup", nil, nil),
-		associateIAMOIDCProvider(),
-		createNew("iamserviceaccount", []string{"--approve"}, nil),
+		whenIAMWithOIDCEnabled(associateIAMOIDCProvider()),
+		whenIAMWithOIDCEnabled(createNew("iamserviceaccount", []string{"--approve"}, nil)),
 		createNew("fargateprofile", nil, harmlessFargateProfileCreationErrors),
 		enableRepo(),
 		draineNodegroup(),
-		updateIAMIdentityMapping(),
+		whenIAMWithOIDCEnabled(updateIAMIdentityMapping()),
 		deleteMissing("nodegroup", []string{"--drain", "--approve"}, nil),
-		deleteMissing("iamserviceaccount", []string{"--approve"}, nil),
+		whenIAMWithOIDCEnabled(deleteMissing("iamserviceaccount", []string{"--approve"}, nil)),
 		// eksctl delete fargate profile doens't has --only-missing command
 		//deleteMissing("fargateprofile", nil, []string{"Error: invalid Fargate profile: empty name"}),
 		applyKubernetesManifests(id),

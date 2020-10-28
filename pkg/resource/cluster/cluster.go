@@ -81,6 +81,16 @@ type Cluster struct {
 	Metrics          []courier.Metric
 }
 
+func (c Cluster) IAMWithOIDCEnabled() (bool, error) {
+	var config EksctlClusterConfig
+
+	if err := yaml.Unmarshal([]byte(c.Spec), &config); err != nil {
+		return false, fmt.Errorf("parsing cluster.yaml: %w\nCONTENT:\n%s", err, c.Spec)
+	}
+
+	return config.IAM.WithOIDC, nil
+}
+
 func (c Cluster) GitOpsEnabled() (bool, error) {
 	var config EksctlClusterConfig
 
@@ -111,6 +121,11 @@ type EksctlClusterConfig struct {
 	// on `git: {}` in the generated cluster.yaml.
 	Git  map[string]interface{} `yaml:"git,omitempty"`
 	Rest map[string]interface{} `yaml:",inline"`
+	IAM  IAM                    `yaml:"iam"`
+}
+
+type IAM struct {
+	WithOIDC bool `yaml:"withOIDC"`
 }
 
 type VPC struct {
