@@ -39,26 +39,38 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 		)
 	}
 
+	log.Print("Started taking exclusive lock on shoal")
+
 	prepareEksctlMu.Lock()
 	defer prepareEksctlMu.Unlock()
+
+	log.Print("Took exclusive lock on shoal")
 
 	s, err := shoal.New()
 	if err != nil {
 		return nil, err
 	}
 
+	log.Print("Shoal instance created")
+
 	if len(conf.Dependencies) > 0 {
 		if err := s.Init(); err != nil {
 			return nil, fmt.Errorf("initializing shoal: %w", err)
 		}
 
+		log.Print("Shoal initialized")
+
 		if err := s.InitGitProvider(conf); err != nil {
 			return nil, fmt.Errorf("initializing shoal git provider: %w", err)
 		}
 
+		log.Print("Shoal's Git provider initialized")
+
 		if err := s.Sync(conf); err != nil {
 			return nil, err
 		}
+
+		log.Print("Shoal sync finished")
 	}
 
 	binPath := s.BinPath()
