@@ -126,7 +126,7 @@ func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 		return nil
 	}
 
-	iams, err := runGetIAMIdentityMapping(cluster)
+	iams, err := runGetIAMIdentityMapping(d, cluster)
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
 	}
@@ -150,7 +150,7 @@ func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 	return nil
 }
 
-func runGetIAMIdentityMapping(cluster *Cluster) ([]map[string]interface{}, error) {
+func runGetIAMIdentityMapping(d Read, cluster *Cluster) ([]map[string]interface{}, error) {
 
 	//get iamidentitymapping
 	args := []string{
@@ -161,20 +161,20 @@ func runGetIAMIdentityMapping(cluster *Cluster) ([]map[string]interface{}, error
 		"-o",
 		"json",
 	}
-	cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
+	cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, args...)
 
 	if err != nil {
 		return nil, fmt.Errorf("creating get imaidentitymapping command: %w", err)
 	}
-	iamJson, err := resource.Run(cmd)
 
-	//replace rolearn and userarn to iamarn
-	iamJson1 := strings.Replace(iamJson.Output, "rolearn", "iamarn", -1)
-	iamJson2 := strings.Replace(iamJson1, "userarn", "iamarn", -1)
+	iamJson, err := resource.Run(cmd)
 
 	if err != nil {
 		return nil, fmt.Errorf("running get iamidentitymapping : %w", err)
 	}
+	//replace rolearn and userarn to iamarn
+	iamJson1 := strings.Replace(iamJson.Output, "rolearn", "iamarn", -1)
+	iamJson2 := strings.Replace(iamJson1, "userarn", "iamarn", -1)
 
 	var iams []map[string]interface{}
 	if err := json.Unmarshal([]byte(iamJson2), &iams); err != nil {
