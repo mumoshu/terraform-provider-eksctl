@@ -232,7 +232,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 	}
 
 	whenIAMWithOIDCEnabled := func(f func() error) func() error {
-		return func() error{
+		return func() error {
 			iamWithOIDCEnabled, err := cluster.IAMWithOIDCEnabled()
 			if err != nil {
 				return fmt.Errorf("reading iam.withOIDC setting from cluster.yaml: %w", err)
@@ -249,11 +249,11 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 			d.HasChange(KeyIAMIdentityMapping)
 			a, b := d.GetChange(KeyIAMIdentityMapping)
 
-			if err := runCreateIAMIdentityMapping(b.(*schema.Set).Difference(a.(*schema.Set)), cluster); err != nil {
+			if err := runCreateIAMIdentityMapping(d, b.(*schema.Set).Difference(a.(*schema.Set)), cluster); err != nil {
 				return fmt.Errorf("CreateIAMIdentityMapping Error: %v", err)
 			}
 
-			if err := runDeleteIAMIdentityMapping(a.(*schema.Set).Difference(b.(*schema.Set)), cluster); err != nil {
+			if err := runDeleteIAMIdentityMapping(d, a.(*schema.Set).Difference(b.(*schema.Set)), cluster); err != nil {
 				return fmt.Errorf("DeleteIAMIdentityMapping Error: %v", err)
 			}
 

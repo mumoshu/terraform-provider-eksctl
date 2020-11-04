@@ -139,7 +139,7 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 }
 
 func createIAMIdentityMapping(d *schema.ResourceData, cluster *Cluster) error {
-	iams, err := runGetIAMIdentityMapping(cluster)
+	iams, err := runGetIAMIdentityMapping(d, cluster)
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
 	}
@@ -154,7 +154,7 @@ func createIAMIdentityMapping(d *schema.ResourceData, cluster *Cluster) error {
 
 	if d.Get(KeyIAMIdentityMapping) != nil {
 		values := d.Get(KeyIAMIdentityMapping).(*schema.Set)
-		if err := runCreateIAMIdentityMapping(values, cluster); err != nil {
+		if err := runCreateIAMIdentityMapping(d, values, cluster); err != nil {
 			return fmt.Errorf("creating create  imaidentitymapping command: %w", err)
 		}
 
@@ -166,7 +166,7 @@ func createIAMIdentityMapping(d *schema.ResourceData, cluster *Cluster) error {
 	return nil
 }
 
-func runCreateIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
+func runCreateIAMIdentityMapping(d *schema.ResourceData, s *schema.Set, cluster *Cluster) error {
 	values := s.List()
 	for _, v := range values {
 		ele := v.(map[string]interface{})
@@ -189,7 +189,7 @@ func runCreateIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
 		}
 		args = append(args, g2...)
 
-		cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
+		cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, args...)
 
 		if err != nil {
 			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
@@ -205,7 +205,7 @@ func runCreateIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
 	return nil
 }
 
-func runDeleteIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
+func runDeleteIAMIdentityMapping(d *schema.ResourceData, s *schema.Set, cluster *Cluster) error {
 	values := s.List()
 	for _, v := range values {
 		ele := v.(map[string]interface{})
@@ -218,7 +218,7 @@ func runDeleteIAMIdentityMapping(s *schema.Set, cluster *Cluster) error {
 			ele["iamarn"].(string),
 		}
 
-		cmd, err := newEksctlCommandWithAWSProfile(cluster, args...)
+		cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, args...)
 
 		if err != nil {
 			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
