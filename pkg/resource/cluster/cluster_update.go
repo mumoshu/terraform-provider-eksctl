@@ -273,7 +273,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) error {
 		createNew("fargateprofile", nil, harmlessFargateProfileCreationErrors),
 		enableRepo(),
 		draineNodegroup(),
-		whenIAMWithOIDCEnabled(updateIAMIdentityMapping()),
+		updateIAMIdentityMapping(),
 		deleteMissing("nodegroup", []string{"--drain", "--approve"}, nil),
 		whenIAMWithOIDCEnabled(deleteMissing("iamserviceaccount", []string{"--approve"}, nil)),
 		// eksctl delete fargate profile doens't has --only-missing command
