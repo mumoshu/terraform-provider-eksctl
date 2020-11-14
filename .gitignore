@@ -30,3 +30,6 @@ dist/
 examples/terraform.d
 *.iml
 dist/
+.envrc
+.shoal
+\#*#
