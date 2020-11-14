@@ -1,6 +1,7 @@
 package courier
 
 import (
+	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"time"
@@ -63,6 +64,12 @@ func ReadListenerRule(m ResourceReader) (*ListenerRule, error) {
 		for k, rawVal := range r {
 			querystrings[k] = rawVal.(string)
 		}
+	}
+
+	if len(hosts) == 0 && len(pathPatterns) == 0 && len(methods) == 0 && len(sourceIPs) == 0 && len(headers) == 0 &&
+		len(querystrings) == 0 {
+
+		return nil, errors.New("one ore more rule condition(s) are required. Specify `hosts`, `path_patterns`, `methods`, `source_ips`, `headers`, or `querystrings`")
 	}
 
 	return &ListenerRule{

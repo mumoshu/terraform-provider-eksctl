@@ -2,6 +2,7 @@ package courier
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/elbv2"
@@ -9,11 +10,14 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
+	"log"
 	"strconv"
 	"strings"
 )
 
 func (a *ALB) Apply(d *CourierALB) error {
+	log.SetFlags(log.Lshortfile)
+
 	sess := awsclicompat.NewSession(d.Region, d.Profile)
 
 	sess.Config.Endpoint = &d.Address
@@ -33,7 +37,9 @@ func (a *ALB) Apply(d *CourierALB) error {
 	priorityStr := strconv.Itoa(priority)
 
 	var rule *elbv2.Rule
-	for _, r := range o.Rules {
+	for i := range o.Rules {
+		r := o.Rules[i]
+
 		if r.Priority != nil && *r.Priority == priorityStr {
 			rule = r
 		}
@@ -50,16 +56,20 @@ func (a *ALB) Apply(d *CourierALB) error {
 	stepWeight := d.StepWeight
 
 	if rule == nil {
-		lr.Destinations = destinations
+		log.Printf("Creating new rule for ALB listener %s", listenerARN)
 
-		createRuleInput, err := ruleCreationInput(listenerARN, lr)
+		createRuleInput, err := ruleCreationInput(listenerARN, lr, destinations)
 		o, err := svc.CreateRule(createRuleInput)
 		if err != nil {
 			return fmt.Errorf("creating listener rule: %w", err)
 		}
 
 		rule = o.Rules[0]
+
+		log.Printf("Created new rule: %+v", *rule)
 	} else {
+		log.Printf("Updating existing rule: %+v", *rule)
+
 		desiredRuleConditions := getRuleConditions(lr)
 
 		var conditionsModified bool
@@ -70,15 +80,40 @@ func (a *ALB) Apply(d *CourierALB) error {
 			currentConditions = rule.Conditions
 		}
 
+		for i := range rule.Conditions {
+			// Otherwise we end up observing changes on Condition.Values even though
+			// we can't set both Condition.Values and Condition.*.Values:
+			//
+			// alb_apply.go:83: Rule conditions has been changed: current (-), desired (+):
+			//   []*elbv2.RuleCondition{
+			//          &{
+			//                  ... // 5 identical fields
+			//                  QueryStringConfig: nil,
+			//                  SourceIpConfig:    nil,
+			// -                Values:            []*string{&"/*"},
+			// +                Values:            nil,
+			//          },
+			//   }
+			rule.Conditions[i].Values = nil
+		}
+
 		if d := cmp.Diff(currentConditions, desiredRuleConditions); d != "" {
+			log.Printf("Rule conditions has been changed: current (-), desired (+):\n%s", d)
+
 			conditionsModified = true
 		}
 
 		if conditionsModified {
+			log.Printf("Updating rule %s in-place, without traffic shifting", *rule.RuleArn)
+
+			if len(desiredRuleConditions) == 0 {
+				return errors.New("ALB does not support rule with no condition(s). Please specify one ore more from `hosts`, `path_patterns`, `methods`, `source_ips` and `headers`")
+			}
+
 			// ALB doesn't support traffic-weight between different rules.
 			// We have no other way than modifying the rule in-place, which means no gradual traffic shiting is done.
 
-			desiredActions := getRuleActions(lr)
+			desiredActions := getRuleActions(destinations)
 			modifyRuleInput := &elbv2.ModifyRuleInput{
 				Actions:    desiredActions,
 				Conditions: desiredRuleConditions,
@@ -87,13 +122,15 @@ func (a *ALB) Apply(d *CourierALB) error {
 
 			_, err := svc.ModifyRule(modifyRuleInput)
 			if err != nil {
-				return fmt.Errorf("creating listener rule: %w", err)
+				return fmt.Errorf("updating listener rule: %w", err)
 			}
 
 			return nil
 		}
 
 		// We can gradually shift traffic because Rule.Conditions are unchanged.
+
+		log.Printf("Updating rule %s with traffic shifting", *rule.RuleArn)
 
 		ctx := context.Background()
 
@@ -136,6 +173,8 @@ func (a *ALB) Apply(d *CourierALB) error {
 		if current == nil {
 			return xerrors.Errorf("prev=current target group %s not found", prevTGARN)
 		}
+
+		log.Printf("Starting to update rule %s, so that the traffic is gradually migrated from %s to %s", *rule.RuleArn, *current.TargetGroupArn, *desired.TargetGroupArn)
 
 		describeListenersResult, err := svc.DescribeListeners(&elbv2.DescribeListenersInput{
 			ListenerArns: aws.StringSlice([]string{lr.ListenerARN}),
@@ -279,10 +318,10 @@ func getRuleConditions(listenerRule *ListenerRule) []*elbv2.RuleCondition {
 	return ruleConditions
 }
 
-func getRuleActions(listenerRule *ListenerRule) []*elbv2.Action {
+func getRuleActions(destinations []Destination) []*elbv2.Action {
 	tgs := []*elbv2.TargetGroupTuple{}
 
-	for _, d := range listenerRule.Destinations {
+	for _, d := range destinations {
 		tgs = append(tgs, &elbv2.TargetGroupTuple{
 			TargetGroupArn: aws.String(d.TargetGroupARN),
 			Weight:         aws.Int64(int64(d.Weight)),
@@ -302,9 +341,9 @@ func getRuleActions(listenerRule *ListenerRule) []*elbv2.Action {
 	return ruleActions
 }
 
-func ruleCreationInput(listenerARN string, listenerRule *ListenerRule) (*elbv2.CreateRuleInput, error) {
+func ruleCreationInput(listenerARN string, listenerRule *ListenerRule, destinations []Destination) (*elbv2.CreateRuleInput, error) {
 	ruleConditions := getRuleConditions(listenerRule)
-	ruleActions := getRuleActions(listenerRule)
+	ruleActions := getRuleActions(destinations)
 
 	createRuleInput := &elbv2.CreateRuleInput{
 		Actions:     ruleActions,
