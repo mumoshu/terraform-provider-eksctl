@@ -1,7 +1,6 @@
 package resource
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"os/exec"
@@ -11,23 +10,23 @@ import (
 
 func TestRun_err(t *testing.T) {
 	var repeats string
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 2; i++ {
 		if repeats != "" {
 			repeats += "\n"
 		}
 		repeats = repeats + "stdout"
 	}
-	want := fmt.Sprintf(`command "/bin/bash": exit status 1
+	want := fmt.Sprintf(`running "/bin/bash bash -c echo stdout; echo stdout; echo stderr 1>&2; exit 1": exit status 1
 %s
 stderr
 `, repeats)
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("%3d", i), func(t *testing.T) {
 			t.Parallel()
 
-			cmd := exec.Command("bash", "-c", "yes stdout | head -n 1000; echo stderr 1>&2; exit 1")
-			cmd.Stdin = bytes.NewReader([]byte("foo"))
+			cmd := exec.Command("bash", "-c", "echo stdout; echo stdout; echo stderr 1>&2; exit 1")
+			//cmd.Stdin = bytes.NewReader([]byte("foo"))
 
 			if _, err := Run(cmd); err != nil {
 				if d := cmp.Diff(want, err.Error()); d != "" {
@@ -42,7 +41,7 @@ stderr
 
 func TestRun(t *testing.T) {
 	var repeats string
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 2; i++ {
 		if repeats != "" {
 			repeats += "\n"
 		}
@@ -52,12 +51,12 @@ func TestRun(t *testing.T) {
 stderr
 `, repeats)
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 10; i++ {
 		t.Run(fmt.Sprintf("%3d", i), func(t *testing.T) {
 			t.Parallel()
 
-			cmd := exec.Command("bash", "-c", "yes stdout | head -n 1000; echo stderr 1>&2")
-			cmd.Stdin = bytes.NewReader([]byte("foo"))
+			cmd := exec.Command("bash", "-c", "echo stdout; echo stdout; echo stderr 1>&2")
+			//cmd.Stdin = bytes.NewReader([]byte("foo"))
 
 			if r, err := Run(cmd); err != nil {
 				t.Fatalf("unexpected error: %v", err)

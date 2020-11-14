@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func DoGradualTrafficShift(ctx context.Context, svc elbv2iface.ELBV2API, l ListenerStatus, opts CanaryOpts) error {
+func DoGradualTrafficShift(ctx context.Context, svc elbv2iface.ELBV2API, l ListenerStatus, p int, opts CanaryOpts) error {
 	if l.Rule.Actions != nil && len(l.Rule.Actions) > 0 {
 		if len(l.Rule.Actions) != 1 {
 			return fmt.Errorf("unexpected number of actions in rule %q: want 2, got %d", *l.Rule.RuleArn, len(l.Rule.Actions))
@@ -35,8 +35,6 @@ func DoGradualTrafficShift(ctx context.Context, svc elbv2iface.ELBV2API, l Liste
 
 		ticker := time.NewTicker(advancementInterval)
 		defer ticker.Stop()
-
-		p := 1
 
 		for {
 			select {

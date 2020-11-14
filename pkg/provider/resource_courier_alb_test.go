@@ -269,10 +269,12 @@ func TestAccCourierALB_update(t *testing.T) {
 			params := &elbv2.DescribeTargetGroupsOutput{
 				TargetGroups: []*elbv2.TargetGroup{
 					{
-						TargetGroupArn: aws.String("next_arn"),
+						TargetGroupArn:  aws.String("next_arn"),
+						TargetGroupName: aws.String("Next"),
 					},
 					{
-						TargetGroupArn: aws.String("prev_arn"),
+						TargetGroupArn:  aws.String("prev_arn"),
+						TargetGroupName: aws.String("Prev"),
 					},
 				},
 			}
@@ -337,6 +339,9 @@ func TestAccCourierALB_update(t *testing.T) {
 			resBody = []byte("<CreateRuleResult>")
 			resBody = append(resBody, buf.Bytes()...)
 			resBody = append(resBody, []byte("</CreateRuleResult>")...)
+
+		case "Action=DeleteRule&RuleArn=rule_arn&Version=2015-12-01":
+
 		default:
 			t.Fatalf("Unexpected operation: %s", op)
 		}

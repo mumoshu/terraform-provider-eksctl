@@ -1,4 +1,4 @@
-package provider
+package courier
 
 import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"

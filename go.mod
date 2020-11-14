@@ -13,6 +13,7 @@ require (
 	github.com/rs/xid v1.2.1
 	github.com/stretchr/testify v1.5.1
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
+	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
 	gopkg.in/yaml.v3 v3.0.0-20200506231410-2ff61e1afc86
 )
 

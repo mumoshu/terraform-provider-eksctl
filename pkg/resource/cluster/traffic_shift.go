@@ -59,7 +59,7 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts co
 		l := listenerStatuses[i]
 
 		g.Go(func() error {
-			return courier.DoGradualTrafficShift(tCtx, svc, l, opts)
+			return courier.DoGradualTrafficShift(tCtx, svc, l, 1, opts)
 		})
 	}
 

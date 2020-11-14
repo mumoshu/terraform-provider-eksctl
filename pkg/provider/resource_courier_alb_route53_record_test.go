@@ -198,7 +198,7 @@ func TestAccCourierRoute53Record_create(t *testing.T) {
 			resBody = []byte("<ListResourceRecordSetsResult>")
 			resBody = append(resBody, buf.Bytes()...)
 			resBody = append(resBody, []byte("</ListResourceRecordSetsResult>")...)
-		case "/2013-04-01/hostedzone/zone_id/rrset/":
+		case "/2013-04-01/hostedzone/zone_id/rrset":
 			var req route53.ChangeResourceRecordSetsInput
 			if err := xmlutil.UnmarshalXML(&req, xml.NewDecoder(strings.NewReader(op)), "ChangeResourceRecordSetsRequest"); err != nil {
 				t.Fatalf("Unexpected error while unmarshalling XML: %v", err)
