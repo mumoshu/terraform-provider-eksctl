@@ -95,12 +95,13 @@ resource "aws_lb_target_group" "green" {
 }
 
 resource "eksctl_cluster" "blue" {
-  eksctl_bin = "eksctl-dev"
+  eksctl_version = "0.30.0"
   name = "blue"
   region = var.region
   api_version = "eksctl.io/v1alpha5"
-  version = "1.16"
+  version = "1.18"
   vpc_id = var.vpc_id
+  kubeconfig_path = "kubeconfig"
   spec = <<EOS
 
 nodeGroups:
