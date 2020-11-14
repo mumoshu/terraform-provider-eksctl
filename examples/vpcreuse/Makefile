@@ -1,5 +1,6 @@
 WORKSPACE ?= $(shell pwd)
 HELMFILE_ROOT ?= ../../../terraform-provider-helmfile
+TERRAFORM ?= terraform
 
 .PHONY: build
 build:
@@ -11,6 +12,7 @@ build:
 dev:
 	make build
 	make testdata/01-bootstrap init tfvars plan apply
+	make testdata/02-nodegroup-create-then-delete plan apply
 	make destroy
 
 STEPS = $(wildcard testdata/*)
@@ -32,7 +34,7 @@ $(STEPS):%:$$(wildcard %/*.tf)
 
 .PHONY: init
 init:
-	terraform init
+	$(TERRAFORM) init
 
 .PHONY: testout
 testout:
@@ -41,14 +43,14 @@ testout:
 .PHONY: plan
 plan: testout
 	if [ -e testout/$$(cat CURRENT)/tf.plan.log ]; then rm testout/$$(cat CURRENT)/tf.plan.log; fi
-	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.plan.log TF_LOG=TRACE terraform plan
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.plan.log TF_LOG=TRACE $(TERRAFORM) plan
 
 .PHONY: apply
 apply: testout
 	if [ -e testout/$$(cat CURRENT)/tf.apply.log ]; then rm testout/$$(cat CURRENT)/tf.apply.log; fi
-	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.apply.log TF_LOG=TRACE terraform apply -auto-approve
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.apply.log TF_LOG=TRACE $(TERRAFORM) apply -auto-approve
 
 .PHONY: destroy
 destroy: testout
 	if [ -e testout/$$(cat CURRENT)/tf.destroy.log ]; then rm testout/$$(cat CURRENT)/tf.destroy.log; fi
-	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.destroy.log TF_LOG=TRACE terraform destroy -auto-approve
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.destroy.log TF_LOG=TRACE $(TERRAFORM) destroy -auto-approve

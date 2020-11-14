@@ -25,7 +25,8 @@ variable "vpc_subnet_groups" {
 }
 
 resource "eksctl_cluster" "vpcreuse1" {
-  eksctl_version = "0.29.2"
+  eksctl_version = "0.30.0"
+  version = "1.18"
   name = "vpcreuse2"
   region = "us-east-2"
   tags = {
@@ -51,9 +52,11 @@ vpc:
     %{ endfor ~}
 
 nodeGroups:
-  - name: ng1
+  - name: ng2
     instanceType: m5.large
     desiredCapacity: 1
 
+iam:
+  withOIDC: true
 EOS
 }
