@@ -7,7 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"golang.org/x/sync/errgroup"
 	"time"
 )
@@ -15,7 +15,7 @@ import (
 func createOrUpdateCourierRoute53Record(d *schema.ResourceData) error {
 	ctx := context.Background()
 
-	sess := cluster.AWSSessionFromResourceData(d)
+	sess := resource.AWSSessionFromResourceData(d)
 
 	if v := d.Get("address"); v != nil {
 		sess.Config.Endpoint = aws.String(v.(string))
@@ -30,7 +30,7 @@ func createOrUpdateCourierRoute53Record(d *schema.ResourceData) error {
 		return err
 	}
 
-	region, profile := cluster.GetAWSRegionAndProfile(d)
+	region, profile := resource.GetAWSRegionAndProfile(d)
 
 	recordName := d.Get("name").(string)
 

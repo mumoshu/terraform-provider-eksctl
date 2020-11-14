@@ -1,11 +1,11 @@
 package provider
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster"
 )
 
-func readMetrics(d *schema.ResourceData) ([]courier.Metric, error) {
+func readMetrics(d cluster.Read) ([]courier.Metric, error) {
 	var metrics []courier.Metric
 
 	if v := d.Get("datadog_metric"); v != nil {

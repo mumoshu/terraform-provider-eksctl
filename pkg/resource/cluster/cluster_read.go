@@ -80,7 +80,7 @@ func (m *Manager) readCluster(d ReadWrite) error {
 func (m *Manager) readClusterInternal(d ReadWrite) (*Cluster, error) {
 	clusterNamePrefix := d.Get("name").(string)
 
-	sess := AWSSessionFromResourceData(d)
+	sess := resource.AWSSessionFromResourceData(d)
 
 	arns, err := getTargetGroupARNs(sess, clusterNamePrefix)
 	if err != nil {

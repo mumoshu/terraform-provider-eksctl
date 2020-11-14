@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	resource2 "github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"os/exec"
 )
 
@@ -14,7 +15,7 @@ func newEksctlCommandFromResourceWithRegionAndProfile(resource Read, args ...str
 		return nil, fmt.Errorf("preparing eksctl binary: %w", err)
 	}
 
-	region, profile := GetAWSRegionAndProfile(resource)
+	region, profile := resource2.GetAWSRegionAndProfile(resource)
 
 	if region != "" {
 		args = append(args, "--region", region)

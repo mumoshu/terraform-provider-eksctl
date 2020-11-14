@@ -11,7 +11,7 @@ import (
 
 func TestRun_err(t *testing.T) {
 	var repeats string
-	for i := 0; i<1000; i++ {
+	for i := 0; i < 1000; i++ {
 		if repeats != "" {
 			repeats += "\n"
 		}
@@ -22,7 +22,7 @@ func TestRun_err(t *testing.T) {
 stderr
 `, repeats)
 
-	for i := 0; i<100; i++ {
+	for i := 0; i < 100; i++ {
 		t.Run(fmt.Sprintf("%3d", i), func(t *testing.T) {
 			t.Parallel()
 
@@ -40,8 +40,9 @@ stderr
 	}
 }
 
-func TestRun(t *testing.T) {var repeats string
-	for i := 0; i<1000; i++ {
+func TestRun(t *testing.T) {
+	var repeats string
+	for i := 0; i < 1000; i++ {
 		if repeats != "" {
 			repeats += "\n"
 		}
@@ -51,7 +52,7 @@ func TestRun(t *testing.T) {var repeats string
 stderr
 `, repeats)
 
-	for i := 0; i<100; i++ {
+	for i := 0; i < 100; i++ {
 		t.Run(fmt.Sprintf("%3d", i), func(t *testing.T) {
 			t.Parallel()
 

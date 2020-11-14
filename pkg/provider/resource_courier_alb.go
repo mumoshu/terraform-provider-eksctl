@@ -1,103 +1,32 @@
 package provider
 
 import (
-	"context"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/elbv2"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster"
-	"golang.org/x/sync/errgroup"
-	"log"
-	"strconv"
-	"strings"
 	"time"
 )
 
-func deleteCourierALB(d *schema.ResourceData) error {
-	sess := cluster.AWSSessionFromResourceData(d)
-
-	if v := d.Get("address"); v != nil {
-		sess.Config.Endpoint = aws.String(v.(string))
-	}
-
-	svc := elbv2.New(sess)
-
-	listenerARN := d.Get("listener_arn").(string)
-
-	o, err := svc.DescribeRules(&elbv2.DescribeRulesInput{
-		ListenerArn: aws.String(listenerARN),
-	})
-	if err != nil {
-		return err
-	}
-
-	priority := d.Get("priority").(int)
-	priorityStr := strconv.Itoa(priority)
-
-	var rule *elbv2.Rule
-	for _, r := range o.Rules {
-		if r.Priority != nil && *r.Priority == priorityStr {
-			rule = r
-		}
-	}
-
-	if rule != nil {
-		input := &elbv2.DeleteRuleInput{RuleArn: rule.RuleArn}
-		if res, err := svc.DeleteRule(input); err != nil {
-			var appendix string
-
-			if res != nil {
-				appendix = fmt.Sprintf("\nOUTPUT:\n%v", *res)
-			}
-
-			log.Printf("Error: deleting rule: %w\nINPUT:\n%v%s", err, *input, appendix)
-
-			return fmt.Errorf("deleting rule: %w", err)
-		}
-	}
-
-	return nil
+type Read interface {
+	Get(string) interface{}
 }
 
-func createOrUpdateCourierALB(d *schema.ResourceData) error {
-	sess := cluster.AWSSessionFromResourceData(d)
+func toConf(d Read) (*courier.CourierALB, error) {
+	region, profile := resource.GetAWSRegionAndProfile(d)
+
+	conf := courier.CourierALB{
+		Region:  region,
+		Profile: profile,
+	}
 
 	if v := d.Get("address"); v != nil {
-		sess.Config.Endpoint = aws.String(v.(string))
+		conf.Address = v.(string)
 	}
 
-	svc := elbv2.New(sess)
+	conf.ListenerARN = d.Get("listener_arn").(string)
 
-	listenerARN := d.Get("listener_arn").(string)
-
-	o, err := svc.DescribeRules(&elbv2.DescribeRulesInput{
-		ListenerArn: aws.String(listenerARN),
-	})
-	if err != nil {
-		return err
-	}
-
-	priority := d.Get("priority").(int)
-	priorityStr := strconv.Itoa(priority)
-
-	var rule *elbv2.Rule
-	for _, r := range o.Rules {
-		if r.Priority != nil && *r.Priority == priorityStr {
-			rule = r
-		}
-	}
-
-	lr, err := courier.ReadListenerRule(d)
-	if err != nil {
-		return err
-	}
-
-	metrics, err := readMetrics(d)
-	if err != nil {
-		return err
-	}
+	conf.Priority = d.Get("priority").(int)
 
 	var destinations []courier.Destination
 
@@ -116,224 +45,62 @@ func createOrUpdateCourierALB(d *schema.ResourceData) error {
 		}
 	}
 
-	stepInterval := 1 * time.Second
-	if v := d.Get("step_interval"); v != nil {
-		d, err := time.ParseDuration(v.(string))
-		if err != nil {
-			return fmt.Errorf("error parsing step_interval %v: %w", v, err)
-		}
-
-		stepInterval = d
-	}
+	conf.Destinations = destinations
 
 	stepWeight := 50
 	if v := d.Get("step_weight"); v != nil {
 		stepWeight = v.(int)
 	}
 
-	if rule == nil {
-		lr.Destinations = destinations
+	conf.StepWeight = stepWeight
 
-		createRuleInput, err := ruleCreationInput(listenerARN, lr)
-		o, err := svc.CreateRule(createRuleInput)
+	stepInterval := 1 * time.Second
+	if v := d.Get("step_interval"); v != nil {
+		d, err := time.ParseDuration(v.(string))
 		if err != nil {
-			return fmt.Errorf("creating listener rule: %w", err)
+			return nil, fmt.Errorf("error parsing step_interval %v: %w", v, err)
 		}
 
-		rule = o.Rules[0]
-	} else {
-		ctx := context.Background()
-
-		var nextTGARN, prevTGARN string
-
-		if destinations[0].Weight > destinations[1].Weight {
-			nextTGARN = destinations[0].TargetGroupARN
-			prevTGARN = destinations[1].TargetGroupARN
-		} else {
-			prevTGARN = destinations[0].TargetGroupARN
-			nextTGARN = destinations[1].TargetGroupARN
-		}
-
-		r1, err := svc.DescribeTargetGroups(&elbv2.DescribeTargetGroupsInput{
-			TargetGroupArns: []*string{
-				aws.String(nextTGARN),
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		r2, err := svc.DescribeTargetGroups(&elbv2.DescribeTargetGroupsInput{
-			TargetGroupArns: []*string{
-				aws.String(prevTGARN),
-			},
-		})
-		if err != nil {
-			return err
-		}
-
-		describeListenersResult, err := svc.DescribeListeners(&elbv2.DescribeListenersInput{
-			ListenerArns: aws.StringSlice([]string{lr.ListenerARN}),
-		})
-		if err != nil {
-			return err
-		}
-
-		l := courier.ListenerStatus{
-			Listener:       describeListenersResult.Listeners[0],
-			Rule:           rule,
-			ALBAttachments: nil,
-			DesiredTG:      r1.TargetGroups[0],
-			CurrentTG:      r2.TargetGroups[0],
-			DeletedTGs:     nil,
-			Metrics:        metrics,
-		}
-
-		ctx, cancel := context.WithCancel(ctx)
-		e, errctx := errgroup.WithContext(ctx)
-
-		e.Go(func() error {
-			defer cancel()
-			return courier.DoGradualTrafficShift(errctx, svc, l, courier.CanaryOpts{
-				CanaryAdvancementInterval: stepInterval,
-				CanaryAdvancementStep:     stepWeight,
-				Region:                    "",
-				ClusterName:               "",
-			})
-		})
-
-		data := courier.ListerStatusToTemplateData(l)
-
-		region, profile := cluster.GetAWSRegionAndProfile(d)
-
-		e.Go(func() error {
-			return courier.Analyze(errctx, region, profile, l.Metrics, data)
-		})
-
-		if err := e.Wait(); err != nil {
-			return err
-		}
+		stepInterval = d
 	}
 
+	conf.StepInterval = stepInterval
+
+	metrics, err := readMetrics(d)
+	if err != nil {
+		return nil, err
+	}
+
+	conf.Metrics = metrics
+
+	lr, err := courier.ReadListenerRule(d)
+	if err != nil {
+		return nil, err
+	}
+
+	conf.ListenerRule = lr
+
+	return &conf, nil
+}
+
+func deleteCourierALB(d cluster.Read) error {
+	conf, err := toConf(d)
 	if err != nil {
 		return err
 	}
-	return nil
+
+	alb := &courier.ALB{}
+
+	return alb.Delete(conf)
 }
 
-func ruleCreationInput(listenerARN string, listenerRule *courier.ListenerRule) (*elbv2.CreateRuleInput, error) {
-	// Create rule and set it to l.Rule
-	ruleConditions := []*elbv2.RuleCondition{
-		//	{
-		//		Field:                   nil,
-		//		HostHeaderConfig:        nil,
-		//		HttpHeaderConfig:        nil,
-		//		HttpRequestMethodConfig: nil,
-		//		PathPatternConfig:       nil,
-		//		QueryStringConfig:       nil,
-		//		SourceIpConfig:          nil,
-		//		Values:                  nil,
-		//	}
+func createOrUpdateCourierALB(d Read) error {
+	conf, err := toConf(d)
+	if err != nil {
+		return err
 	}
 
-	// See this for how rule conditions should be composed:
-	// https://cloudaffaire.com/aws-application-load-balancer-listener-rules-and-advance-routing-options
-	// (I found it much readable and helpful than the official reference doc
+	alb := &courier.ALB{}
 
-	if len(listenerRule.Hosts) > 0 {
-		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-			Field: aws.String("host-header"),
-			HostHeaderConfig: &elbv2.HostHeaderConditionConfig{
-				Values: aws.StringSlice(listenerRule.Hosts),
-			},
-		})
-	}
-
-	if len(listenerRule.PathPatterns) > 0 {
-		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-			Field: aws.String("path-pattern"),
-			PathPatternConfig: &elbv2.PathPatternConditionConfig{
-				Values: aws.StringSlice(listenerRule.PathPatterns),
-			},
-		})
-	}
-
-	if len(listenerRule.Methods) > 0 {
-		methods := make([]string, len(listenerRule.Methods))
-
-		for i, m := range listenerRule.Methods {
-			methods[i] = strings.ToUpper(m)
-		}
-
-		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-			Field: aws.String("http-request-method"),
-			HttpRequestMethodConfig: &elbv2.HttpRequestMethodConditionConfig{
-				Values: aws.StringSlice(methods),
-			},
-		})
-	}
-
-	if len(listenerRule.SourceIPs) > 0 {
-		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-			Field: aws.String("source-ip"),
-			SourceIpConfig: &elbv2.SourceIpConditionConfig{
-				Values: aws.StringSlice(listenerRule.SourceIPs),
-			},
-		})
-	}
-
-	if len(listenerRule.Headers) > 0 {
-		for name, values := range listenerRule.Headers {
-			ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-				Field: aws.String("http-header"),
-				HttpHeaderConfig: &elbv2.HttpHeaderConditionConfig{
-					HttpHeaderName: aws.String(name),
-					Values:         aws.StringSlice(values),
-				},
-			})
-		}
-	}
-
-	if len(listenerRule.QueryStrings) > 0 {
-		var vs []*elbv2.QueryStringKeyValuePair
-
-		for k, v := range listenerRule.QueryStrings {
-			vs = append(vs, &elbv2.QueryStringKeyValuePair{
-				Key:   aws.String(k),
-				Value: aws.String(v),
-			})
-		}
-		ruleConditions = append(ruleConditions, &elbv2.RuleCondition{
-			Field: aws.String("query-string"),
-			QueryStringConfig: &elbv2.QueryStringConditionConfig{
-				Values: vs,
-			},
-		})
-	}
-
-	tgs := []*elbv2.TargetGroupTuple{}
-
-	for _, d := range listenerRule.Destinations {
-		tgs = append(tgs, &elbv2.TargetGroupTuple{
-			TargetGroupArn: aws.String(d.TargetGroupARN),
-			Weight:         aws.Int64(int64(d.Weight)),
-		})
-	}
-
-	createRuleInput := &elbv2.CreateRuleInput{
-		Actions: []*elbv2.Action{
-			{
-				ForwardConfig: &elbv2.ForwardActionConfig{
-					TargetGroupStickinessConfig: nil,
-					TargetGroups:                tgs,
-				},
-				Type: aws.String("forward"),
-			},
-		},
-		Priority:    aws.Int64(int64(listenerRule.Priority)),
-		Conditions:  ruleConditions,
-		ListenerArn: aws.String(listenerARN),
-	}
-
-	return createRuleInput, nil
+	return alb.Apply(conf)
 }
