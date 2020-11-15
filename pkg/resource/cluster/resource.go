@@ -31,6 +31,10 @@ func ResourceCluster() *schema.Resource {
 
 			d.SetId(set.ClusterID)
 
+			if err := loadOIDCProviderURLAndARN(d, set.Cluster); err != nil {
+				return fmt.Errorf("loading oidc issuer url: %w", err)
+			}
+
 			return nil
 		},
 		CustomizeDiff: func(d *schema.ResourceDiff, meta interface{}) (finalErr error) {
@@ -71,8 +75,13 @@ func ResourceCluster() *schema.Resource {
 
 			log.Printf("udapting existing cluster...")
 
-			if err := m.updateCluster(d); err != nil {
+			set, err := m.updateCluster(d)
+			if err != nil {
 				return fmt.Errorf("updating cluster: %w", err)
+			}
+
+			if err := loadOIDCProviderURLAndARN(d, set.Cluster); err != nil {
+				return fmt.Errorf("loading oidc issuer url: %w", err)
 			}
 
 			return nil
@@ -99,9 +108,15 @@ func ResourceCluster() *schema.Resource {
 				}
 			}()
 
-			if err := m.readCluster(d); err != nil {
+			cluster, err := m.readCluster(d)
+			if err != nil {
 				return fmt.Errorf("reading cluster: %w", err)
 			}
+
+			if err := loadOIDCProviderURLAndARN(d, cluster); err != nil {
+				return fmt.Errorf("loading oidc issuer url: %w", err)
+			}
+
 			return nil
 		},
 		Importer: &schema.ResourceImporter{
@@ -273,6 +288,14 @@ func ResourceCluster() *schema.Resource {
 				},
 			},
 			resource.KeyOutput: {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			KeyOIDCProviderURL: {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			KeyOIDCProviderARN: {
 				Type:     schema.TypeString,
 				Computed: true,
 			},

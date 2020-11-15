@@ -182,6 +182,68 @@ resource "eksctl_courier_alb" "myapp" {
   ]
 }
 
+// The following set of IAM resources allows you use a pod IAM role by using
+// service account like:
+//
+// apiVersion: v1
+// kind: ServiceAccount
+// metadata:
+//   annotations:
+//     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT:role/argocd
+//     name: argocd-application-controller
+//     namespace: default
+
+data "aws_iam_policy_document" "argocd" {
+  statement {
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"]
+    effect = "Allow"
+    condition {
+      test = "StringEquals"
+      variable = "${replace(eksctl_cluster.blue.oidc_provider_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:default:argocd-application-controller"]
+    }
+    principals {
+      identifiers = [
+        "${eksctl_cluster.blue.oidc_provider_arn}"]
+      type = "Federated"
+    }
+  }
+}
+
+resource "aws_iam_role" "argocd" {
+  name = "argocd"
+
+  assume_role_policy = data.aws_iam_policy_document.argocd.json
+}
+
+resource "aws_iam_role_policy" "argocd" {
+  name = "argocd"
+  role = aws_iam_role.argocd.id
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:GetCallerIdentity",
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
 output "blue_kubeconfig_path" {
   value = eksctl_cluster.blue.kubeconfig_path
+}
+
+output "blue_oidc_provider_url" {
+  value = eksctl_cluster.blue.oidc_provider_url
+}
+
+output "blue_oidc_provider_arn" {
+  value = eksctl_cluster.blue.oidc_provider_arn
 }

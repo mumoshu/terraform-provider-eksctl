@@ -3,6 +3,7 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
+	"golang.org/x/xerrors"
 	"log"
 	"os"
 	"sort"
@@ -45,11 +46,11 @@ func (d *DiffReadWrite) Id() string {
 	return d.D.Id()
 }
 
-func (m *Manager) readCluster(d ReadWrite) error {
+func (m *Manager) readCluster(d ReadWrite) (*Cluster, error) {
 	cluster, err := m.readClusterInternal(d)
 
 	if err != nil {
-		return fmt.Errorf("reading cluster: %w", err)
+		return nil, fmt.Errorf("reading cluster: %w", err)
 	}
 
 	var path string
@@ -66,15 +67,15 @@ func (m *Manager) readCluster(d ReadWrite) error {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			log.Printf("running customdiff: no kubeconfig file found at kubeconfig_path=%s: recreating it", path)
 			if err := doWriteKubeconfig(d, string(m.getClusterName(cluster, d.Id())), cluster.Region); err != nil {
-				return fmt.Errorf("writing missing kubeconfig on plan: %w", err)
+				return nil, fmt.Errorf("writing missing kubeconfig on plan: %w", err)
 			}
 		}
 	}
 	if err := readIAMIdentityMapping(d, cluster); err != nil {
-		return fmt.Errorf("reading aws-auth via eksctl get iamidentitymaping: %w", err)
+		return nil, fmt.Errorf("reading aws-auth via eksctl get iamidentitymaping: %w", err)
 	}
 
-	return nil
+	return cluster, nil
 }
 
 func (m *Manager) readClusterInternal(d ReadWrite) (*Cluster, error) {
@@ -184,6 +185,100 @@ func runGetIAMIdentityMapping(d Read, cluster *Cluster) ([]map[string]interface{
 	return iams, nil
 }
 
-func sortSlice() {
+func loadOIDCProviderURLAndARN(d ReadWrite, cluster *Cluster) error {
+	iamWithOIDCEnabled, err := cluster.IAMWithOIDCEnabled()
+	if err != nil {
+		return fmt.Errorf("reading iam.withOIDC setting from cluster.yaml: %w", err)
+	} else if !iamWithOIDCEnabled {
+		return nil
+	}
 
+	state, err := runGetCluster(d, cluster)
+	if err != nil {
+		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
+	}
+
+	d.Set(KeyOIDCProviderURL, state.Identity.Oidc.Issuer)
+	d.Set(KeyOIDCProviderARN, state.GetOIDCProviderARN())
+
+	return nil
+}
+
+type ClusterState struct {
+	Name     string   `json:"Name"`
+	Identity Identity `json:"Identity"`
+	RoleArn  string   `json:"RoleArn"`
+}
+
+func (s *ClusterState) GetOIDCProviderARN() string {
+	// RoleArn is like
+	//   arn:aws:iam::ACCOUNT:role/eksctl-CLUSTERNAME-cluster-ServiceRole-O7YWRVENASZV
+	// Identity.Oidc.Issuer is like
+	//   https://oidc.eks.REGION.amazonaws.com/id/ISSUER_ID
+	// Use those to generate OIDCProviderARN like:
+	//   arn:aws:iam::ACCOUNT:oidc-provider/oidc.eks.REGION.amazonaws.com/id/ISSUE_ID
+	account := strings.Split(
+		strings.TrimPrefix(s.RoleArn, "arn:aws:iam::"),
+		":",
+	)[0]
+
+	region := strings.Split(
+		strings.TrimPrefix(s.Identity.Oidc.Issuer, "https://oidc.eks."),
+		".",
+	)[0]
+
+	id := s.Identity.Oidc.Issuer[strings.LastIndex(s.Identity.Oidc.Issuer, "/")+1:]
+
+	return fmt.Sprintf("arn:aws:iam::%s:oidc-provider/oidc.eks.%s.amazonaws.com/id/%s", account, region, id)
+}
+
+type Identity struct {
+	Oidc Oidc `json:"Oidc"`
+}
+
+type Oidc struct {
+	Issuer string `json:"Issuer"`
+}
+
+func runGetCluster(d Read, cluster *Cluster) (*ClusterState, error) {
+	args := []string{
+		"get",
+		"cluster",
+		"--name",
+		cluster.Name,
+		"-o",
+		"json",
+	}
+	cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, args...)
+
+	if err != nil {
+		return nil, fmt.Errorf("creating get imaidentitymapping command: %w", err)
+	}
+
+	run, err := resource.Run(cmd)
+	if err != nil {
+		return nil, xerrors.Errorf("running get-cluster: %w", err)
+	}
+
+	var states []*ClusterState
+	if err := json.Unmarshal([]byte(run.Output), &states); err != nil {
+		return nil, fmt.Errorf("parsing get-cluster output as json : %w", err)
+	}
+
+	log.Printf("parsed cluster state: %s", run.Output)
+
+	var state *ClusterState
+
+	for i := range states {
+		if states[i].Name == cluster.Name {
+			state = states[i]
+			break
+		}
+	}
+
+	if state == nil {
+		return nil, xerrors.Errorf("no cluster found: %s", cluster.Name)
+	}
+
+	return state, nil
 }

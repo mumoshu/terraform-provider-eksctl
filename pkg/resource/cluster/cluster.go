@@ -37,6 +37,8 @@ const KeyIAMIdentityMapping = "iam_identity_mapping"
 const KeyAWSAuthConfigMap = "aws_auth_configmap"
 const (
 	KeyTargetGroupARNs = "target_group_arns"
+	KeyOIDCProviderURL = "oidc_provider_url"
+	KeyOIDCProviderARN = "oidc_provider_arn"
 )
 
 const DefaultAPIVersion = "eksctl.io/v1alpha5"
