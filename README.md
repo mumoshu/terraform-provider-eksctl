@@ -6,6 +6,8 @@ Benefits:
 
 - `terraform apply` to bring up your whole infrastructure.
 - No more generating eksctl `cluster.yaml` with Terraform and a glue shell script just for integration between TF and eksctl.
+- Support for using the same pod IAM role across clusters
+  - Useful for e.g. swapping the ArgoCD cluster without changing the target clusters.
 
 Features:
 
