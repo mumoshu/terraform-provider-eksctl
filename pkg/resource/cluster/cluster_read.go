@@ -200,14 +200,21 @@ func loadOIDCProviderURLAndARN(d ReadWrite, cluster *Cluster) error {
 
 	d.Set(KeyOIDCProviderURL, state.Identity.Oidc.Issuer)
 	d.Set(KeyOIDCProviderARN, state.GetOIDCProviderARN())
+	d.Set(KeySecurityGroupIDs, state.GetSecurityGroupIDs())
 
 	return nil
 }
 
 type ClusterState struct {
-	Name     string   `json:"Name"`
-	Identity Identity `json:"Identity"`
-	RoleArn  string   `json:"RoleArn"`
+	Name               string             `json:"Name"`
+	Identity           Identity           `json:"Identity"`
+	RoleArn            string             `json:"RoleArn"`
+	ResourcesVpcConfig ResourcesVpcConfig `json:"ResourcesVpcConfig"`
+}
+
+type ResourcesVpcConfig struct {
+	ClusterSecurityGroupId string   `json:"ClusterSecurityGroupId"`
+	SecurityGroupIds       []string `json:"SecurityGroupIds"`
 }
 
 func (s *ClusterState) GetOIDCProviderARN() string {
@@ -230,6 +237,10 @@ func (s *ClusterState) GetOIDCProviderARN() string {
 	id := s.Identity.Oidc.Issuer[strings.LastIndex(s.Identity.Oidc.Issuer, "/")+1:]
 
 	return fmt.Sprintf("arn:aws:iam::%s:oidc-provider/oidc.eks.%s.amazonaws.com/id/%s", account, region, id)
+}
+
+func (s *ClusterState) GetSecurityGroupIDs() []string {
+	return s.ResourcesVpcConfig.SecurityGroupIds
 }
 
 type Identity struct {
