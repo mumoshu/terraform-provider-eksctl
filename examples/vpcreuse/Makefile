@@ -43,12 +43,12 @@ testout:
 .PHONY: plan
 plan: testout
 	if [ -e testout/$$(cat CURRENT)/tf.plan.log ]; then rm testout/$$(cat CURRENT)/tf.plan.log; fi
-	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.plan.log TF_LOG=TRACE $(TERRAFORM) plan
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.plan.log TF_LOG=TRACE $(TERRAFORM) plan -var aws_account_id=$(AWS_ACCOUNT_ID) -var myip=$(MYIP)
 
 .PHONY: apply
 apply: testout
 	if [ -e testout/$$(cat CURRENT)/tf.apply.log ]; then rm testout/$$(cat CURRENT)/tf.apply.log; fi
-	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.apply.log TF_LOG=TRACE $(TERRAFORM) apply -auto-approve
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.apply.log TF_LOG=TRACE $(TERRAFORM) apply -auto-approve -var aws_account_id=$(AWS_ACCOUNT_ID) -var myip=$(MYIP)
 
 .PHONY: destroy
 destroy: testout
