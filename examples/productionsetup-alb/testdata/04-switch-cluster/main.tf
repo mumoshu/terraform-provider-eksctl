@@ -284,9 +284,43 @@ data "aws_iam_policy_document" "argocd" {
     effect = "Allow"
     condition {
       test = "StringEquals"
+      variable = "${replace(eksctl_cluster.blue.oidc_provider_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:default:argocd-server"]
+    }
+    principals {
+      identifiers = [
+        "${eksctl_cluster.blue.oidc_provider_arn}"]
+      type = "Federated"
+    }
+  }
+
+  statement {
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"]
+    effect = "Allow"
+    condition {
+      test = "StringEquals"
       variable = "${replace(eksctl_cluster.green.oidc_provider_url, "https://", "")}:sub"
       values = [
         "system:serviceaccount:default:argocd-application-controller"]
+    }
+    principals {
+      identifiers = [
+        "${eksctl_cluster.green.oidc_provider_arn}"]
+      type = "Federated"
+    }
+  }
+
+  statement {
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"]
+    effect = "Allow"
+    condition {
+      test = "StringEquals"
+      variable = "${replace(eksctl_cluster.green.oidc_provider_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:default:argocd-server"]
     }
     principals {
       identifiers = [
