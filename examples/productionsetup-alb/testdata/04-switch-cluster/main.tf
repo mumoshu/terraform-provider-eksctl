@@ -354,6 +354,74 @@ resource "aws_iam_role_policy" "argocd" {
 EOF
 }
 
+data "aws_iam_policy_document" "clusterset" {
+  statement {
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"]
+    effect = "Allow"
+    condition {
+      test = "StringEquals"
+      variable = "${replace(eksctl_cluster.blue.oidc_provider_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:default:clusterset-controller"]
+    }
+    principals {
+      identifiers = [
+        "${eksctl_cluster.blue.oidc_provider_arn}"]
+      type = "Federated"
+    }
+  }
+
+  statement {
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"]
+    effect = "Allow"
+    condition {
+      test = "StringEquals"
+      variable = "${replace(eksctl_cluster.green.oidc_provider_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:default:clusterset-controller"]
+    }
+    principals {
+      identifiers = [
+        "${eksctl_cluster.green.oidc_provider_arn}"]
+      type = "Federated"
+    }
+  }
+}
+
+resource "aws_iam_role" "clusterset" {
+  name = "clusterset-controller"
+
+  assume_role_policy = data.aws_iam_policy_document.clusterset.json
+}
+
+resource "aws_iam_role_policy" "clusterset" {
+  name = "clusterset-controller"
+  role = aws_iam_role.clusterset.id
+
+  policy = <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": "sts:GetCallerIdentity",
+      "Effect": "Allow",
+      "Resource": "*"
+    },
+    {
+      "Action": [
+        "eks:DescribeCluster",
+        "eks:ListClusters"
+      ],
+      "Effect": "Allow",
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+}
+
 output "blue_kubeconfig_path" {
   value = eksctl_cluster.blue.kubeconfig_path
 }
