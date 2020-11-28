@@ -802,6 +802,35 @@ $ make install
 
 The above will install the provider's binary under `${HOME}/.terraform.d/plugins/${OS}_${ARCH}`.
 
+If you're using Terraform v0.13+, you need to tweak your `.tf` file to give a dummy version number to the provider
+while placing the binary to the corresponding location.
+
+Let's say you use `0.0.1` as the dummy version number:
+
+```
+terraform {
+  required_providers {
+    eksctl = {
+      source = "mumoshu/eksctl"
+      version = "0.0.1"
+    }
+
+    helmfile = {
+      source = "mumoshu/helmfile"
+      version = "0.0.1"
+    }
+  }
+}
+```
+
+You place the binary under:
+
+```
+VER=0.0.1
+
+$(PWD)/.terraform/plugins/registry.terraform.io/mumoshu/eksctl/$(VER)/darwin_amd64/terraform-provider-eksctl_v$(VER)
+```
+
 ## Acknowledgement
 
 The implementation of this product is highly inspired from [terraform-provider-shell](https://github.com/scottwinkler/terraform-provider-shell). A lot of thanks to the author!
