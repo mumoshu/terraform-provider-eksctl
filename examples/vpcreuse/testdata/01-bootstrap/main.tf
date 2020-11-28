@@ -111,12 +111,28 @@ resource "aws_security_group_rule" "allow_k8s_api_access_from_argocd" {
   description       = "Allow private k8s api endpoint access from argocd to my control-plane. Requires that ${var.security_group_id} is associated to all the worker nodes running ArgoCD application controller"
 }
 
-variable "myip" {
-  type = string
+provider http {
+  // This allows using checkip.amazonaws.com that doesn't have response Content-Type
+  // See https://github.com/hashicorp/terraform-provider-http/pull/50
+  version = "~> 2.0.0"
+}
+
+data http ifconfig {
+  url = "http://checkip.amazonaws.com/"
+}
+
+variable myip {
+  default = null
+}
+
+variable allowed-cidr {
+  default = null
 }
 
 locals {
-  myip_cidr = "${var.myip}/32"
+  podinfo_nodeport = 30080
+  current-ip = (var.myip == null || var.myip == "") ? chomp(data.http.ifconfig.body) : var.myip
+  allowed-cidr  = (var.allowed-cidr == null) ? "${local.current-ip}/32" : var.allowed-cidr
 }
 
 resource "aws_security_group" "allow_http_from_me" {
@@ -130,7 +146,7 @@ resource "aws_security_group" "allow_http_from_me" {
     to_port = 80
     protocol = "tcp"
     cidr_blocks = [
-      local.myip_cidr]
+      local.allowed-cidr]
   }
 
   tags = {

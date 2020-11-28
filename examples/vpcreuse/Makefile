@@ -53,4 +53,4 @@ apply: testout
 .PHONY: destroy
 destroy: testout
 	if [ -e testout/$$(cat CURRENT)/tf.destroy.log ]; then rm testout/$$(cat CURRENT)/tf.destroy.log; fi
-	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.destroy.log TF_LOG=TRACE $(TERRAFORM) destroy -auto-approve
+	TF_LOG_PATH=testout/$$(cat CURRENT)/tf.destroy.log TF_LOG=TRACE $(TERRAFORM) destroy -auto-approve -var aws_account_id=$(AWS_ACCOUNT_ID) -var myip=$(MYIP)
