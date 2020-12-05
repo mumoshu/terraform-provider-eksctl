@@ -128,7 +128,8 @@ type EksctlClusterConfig struct {
 }
 
 type IAM struct {
-	WithOIDC bool `yaml:"withOIDC"`
+	WithOIDC bool                   `yaml:"withOIDC"`
+	Rest     map[string]interface{} `yaml:",inline"`
 }
 
 type VPC struct {
@@ -259,18 +260,7 @@ metadata:
 %s
 `, a.APIVersion, clusterName, a.Region, a.Version, tagsJson, specStr))
 
-	c := EksctlClusterConfig{
-		VPC: VPC{
-			ID: "",
-			Subnets: Subnets{
-				Public:  map[string]Subnet{},
-				Private: map[string]Subnet{},
-			},
-			Rest: map[string]interface{}{},
-		},
-		NodeGroups: []NodeGroup{},
-		Rest:       map[string]interface{}{},
-	}
+	c := clusterConfigNew()
 
 	if err := yaml.Unmarshal(seedClusterConfig, &c); err != nil {
 		return nil, fmt.Errorf("parsing generate cluster.yaml: %w: INPUT:\n%s", err, string(seedClusterConfig))
@@ -288,18 +278,9 @@ metadata:
 	//	}
 	//}
 
-	var mergedClusterConfig []byte
-	{
-		var buf bytes.Buffer
-
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-
-		if err := enc.Encode(c); err != nil {
-			return nil, err
-		}
-
-		mergedClusterConfig = buf.Bytes()
+	mergedClusterConfig, err := clusterConfigToYAML(c)
+	if err != nil {
+		return nil, err
 	}
 
 	log.Printf("seed cluster config:\n%s", string(seedClusterConfig))
@@ -328,6 +309,34 @@ metadata:
 			ClusterName:               string(clusterName),
 		},
 	}, nil
+}
+
+func clusterConfigToYAML(c EksctlClusterConfig) ([]byte, error) {
+	var buf bytes.Buffer
+
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+
+	if err := enc.Encode(c); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func clusterConfigNew() EksctlClusterConfig {
+	return EksctlClusterConfig{
+		VPC: VPC{
+			ID: "",
+			Subnets: Subnets{
+				Public:  map[string]Subnet{},
+				Private: map[string]Subnet{},
+			},
+			Rest: map[string]interface{}{},
+		},
+		NodeGroups: []NodeGroup{},
+		Rest:       map[string]interface{}{},
+	}
 }
 
 type ClusterName string
