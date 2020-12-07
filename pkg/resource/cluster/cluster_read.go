@@ -3,6 +3,8 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"golang.org/x/xerrors"
 	"log"
 	"os"
@@ -14,12 +16,8 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 )
 
-type Read interface {
-	Get(string) interface{}
-}
-
 type ReadWrite interface {
-	Read
+	api.Getter
 
 	Id() string
 
@@ -32,6 +30,10 @@ type DiffReadWrite struct {
 
 func (d *DiffReadWrite) Get(k string) interface{} {
 	return d.D.Get(k)
+}
+
+func (d *DiffReadWrite) List(k string) []interface{} {
+	return nil
 }
 
 func (d *DiffReadWrite) Set(k string, v interface{}) error {
@@ -78,10 +80,10 @@ func (m *Manager) readCluster(d ReadWrite) (*Cluster, error) {
 	return cluster, nil
 }
 
-func (m *Manager) readClusterInternal(d ReadWrite) (*Cluster, error) {
+func (m *Manager) readClusterInternal(d api.Resource) (*Cluster, error) {
 	clusterNamePrefix := d.Get("name").(string)
 
-	sess := resource.AWSSessionFromResourceData(d)
+	sess := sdk.AWSSessionFromResourceData(d)
 
 	arns, err := getTargetGroupARNs(sess, clusterNamePrefix)
 	if err != nil {
@@ -151,7 +153,7 @@ func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 	return nil
 }
 
-func runGetIAMIdentityMapping(d Read, cluster *Cluster) ([]map[string]interface{}, error) {
+func runGetIAMIdentityMapping(d api.Getter, cluster *Cluster) ([]map[string]interface{}, error) {
 
 	//get iamidentitymapping
 	args := []string{
@@ -251,7 +253,7 @@ type Oidc struct {
 	Issuer string `json:"Issuer"`
 }
 
-func runGetCluster(d Read, cluster *Cluster) (*ClusterState, error) {
+func runGetCluster(d api.Getter, cluster *Cluster) (*ClusterState, error) {
 	args := []string{
 		"get",
 		"cluster",

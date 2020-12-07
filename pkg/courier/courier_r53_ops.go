@@ -5,17 +5,16 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/route53"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"golang.org/x/sync/errgroup"
 	"time"
 )
 
-func createOrUpdateCourierRoute53Record(d *schema.ResourceData) error {
+func CreateOrUpdateCourierRoute53Record(d api.Getter) error {
 	ctx := context.Background()
 
-	sess := resource.AWSSessionFromResourceData(d)
+	sess := sdk.AWSSessionFromResourceData(d)
 
 	if v := d.Get("address"); v != nil {
 		sess.Config.Endpoint = aws.String(v.(string))
@@ -30,16 +29,16 @@ func createOrUpdateCourierRoute53Record(d *schema.ResourceData) error {
 		return err
 	}
 
-	region, profile := resource.GetAWSRegionAndProfile(d)
+	region, profile := sdk.GetAWSRegionAndProfile(d)
 
 	recordName := d.Get("name").(string)
 
-	metrics, err := readMetrics(d)
+	metrics, err := ReadMetrics(d)
 	if err != nil {
 		return err
 	}
 
-	var destinations []courier.DestinationRecordSet
+	var destinations []DestinationRecordSet
 
 	if v := d.Get("destination"); v != nil {
 		for _, arrayItem := range v.([]interface{}) {
@@ -47,7 +46,7 @@ func createOrUpdateCourierRoute53Record(d *schema.ResourceData) error {
 			setIdentifier := m["set_identifier"].(string)
 			weight := m["weight"].(int)
 
-			d := courier.DestinationRecordSet{
+			d := DestinationRecordSet{
 				SetIdentifier: setIdentifier,
 				Weight:        weight,
 			}
@@ -71,7 +70,7 @@ func createOrUpdateCourierRoute53Record(d *schema.ResourceData) error {
 		stepWeight = v.(int)
 	}
 
-	r := &courier.Route53RecordSetRouter{
+	r := &Route53RecordSetRouter{
 		Service:                   svc,
 		RecordName:                recordName,
 		HostedZoneID:              zoneID,
@@ -92,7 +91,7 @@ func createOrUpdateCourierRoute53Record(d *schema.ResourceData) error {
 	}
 
 	e.Go(func() error {
-		return courier.Analyze(errctx, region, profile, metrics, &templateData{})
+		return Analyze(errctx, region, profile, metrics, &templateData{})
 	})
 
 	return e.Wait()

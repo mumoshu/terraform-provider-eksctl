@@ -3,6 +3,7 @@ package cluster
 import (
 	"bytes"
 	"fmt"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"io/ioutil"
 	"log"
 	"os"
@@ -138,7 +139,7 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 	return nil
 }
 
-func createIAMIdentityMapping(d *schema.ResourceData, cluster *Cluster) error {
+func createIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 	iams, err := runGetIAMIdentityMapping(d, cluster)
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
@@ -166,7 +167,7 @@ func createIAMIdentityMapping(d *schema.ResourceData, cluster *Cluster) error {
 	return nil
 }
 
-func runCreateIAMIdentityMapping(d *schema.ResourceData, s *schema.Set, cluster *Cluster) error {
+func runCreateIAMIdentityMapping(d api.Getter, s *schema.Set, cluster *Cluster) error {
 	values := s.List()
 	for _, v := range values {
 		ele := v.(map[string]interface{})
@@ -205,7 +206,7 @@ func runCreateIAMIdentityMapping(d *schema.ResourceData, s *schema.Set, cluster 
 	return nil
 }
 
-func runDeleteIAMIdentityMapping(d *schema.ResourceData, s *schema.Set, cluster *Cluster) error {
+func runDeleteIAMIdentityMapping(d api.Getter, s *schema.Set, cluster *Cluster) error {
 	values := s.List()
 	for _, v := range values {
 		ele := v.(map[string]interface{})

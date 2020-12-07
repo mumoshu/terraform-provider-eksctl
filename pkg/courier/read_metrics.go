@@ -1,15 +1,14 @@
 package courier
 
 import (
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 )
 
-func readMetrics(d cluster.Read) ([]courier.Metric, error) {
-	var metrics []courier.Metric
+func ReadMetrics(d api.Getter) ([]Metric, error) {
+	var metrics []Metric
 
 	if v := d.Get("datadog_metric"); v != nil {
-		ms, err := courier.LoadMetrics(v.([]interface{}))
+		ms, err := LoadMetrics(v.([]interface{}))
 		if err != nil {
 			return nil, err
 		}
@@ -22,7 +21,7 @@ func readMetrics(d cluster.Read) ([]courier.Metric, error) {
 	}
 
 	if v := d.Get("cloudwatch_metric"); v != nil {
-		ms, err := courier.LoadMetrics(v.([]interface{}))
+		ms, err := LoadMetrics(v.([]interface{}))
 		if err != nil {
 			return nil, err
 		}

@@ -2,20 +2,15 @@ package courier
 
 import (
 	"fmt"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"time"
 )
 
-type Read interface {
-	Get(string) interface{}
-}
+func ReadCourierALB(d api.Getter) (*CourierALB, error) {
+	region, profile := sdk.GetAWSRegionAndProfile(d)
 
-func toConf(d Read) (*courier.CourierALB, error) {
-	region, profile := resource.GetAWSRegionAndProfile(d)
-
-	conf := courier.CourierALB{
+	conf := CourierALB{
 		Region:  region,
 		Profile: profile,
 	}
@@ -28,7 +23,7 @@ func toConf(d Read) (*courier.CourierALB, error) {
 
 	conf.Priority = d.Get("priority").(int)
 
-	var destinations []courier.Destination
+	var destinations []Destination
 
 	if v := d.Get("destination"); v != nil {
 		for _, arrayItem := range v.([]interface{}) {
@@ -36,7 +31,7 @@ func toConf(d Read) (*courier.CourierALB, error) {
 			tgARN := m["target_group_arn"].(string)
 			weight := m["weight"].(int)
 
-			d := courier.Destination{
+			d := Destination{
 				TargetGroupARN: tgARN,
 				Weight:         weight,
 			}
@@ -66,14 +61,14 @@ func toConf(d Read) (*courier.CourierALB, error) {
 
 	conf.StepInterval = stepInterval
 
-	metrics, err := readMetrics(d)
+	metrics, err := ReadMetrics(d)
 	if err != nil {
 		return nil, err
 	}
 
 	conf.Metrics = metrics
 
-	lr, err := courier.ReadListenerRule(d)
+	lr, err := ReadListenerRule(d)
 	if err != nil {
 		return nil, err
 	}
@@ -83,24 +78,3 @@ func toConf(d Read) (*courier.CourierALB, error) {
 	return &conf, nil
 }
 
-func deleteCourierALB(d cluster.Read) error {
-	conf, err := toConf(d)
-	if err != nil {
-		return err
-	}
-
-	alb := &courier.ALB{}
-
-	return alb.Delete(conf)
-}
-
-func createOrUpdateCourierALB(d Read) error {
-	conf, err := toConf(d)
-	if err != nil {
-		return err
-	}
-
-	alb := &courier.ALB{}
-
-	return alb.Apply(conf)
-}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"github.com/rs/xid"
 )
 
@@ -15,13 +17,13 @@ func ResourceRoute53Record() *schema.Resource {
 			id := xid.New().String()
 			d.SetId(id)
 
-			if err := createOrUpdateCourierRoute53Record(d); err != nil {
+			if err := courier.CreateOrUpdateCourierRoute53Record(&tfsdk.Resource{d}); err != nil {
 				return fmt.Errorf("updating courier_route53_record: %w", err)
 			}
 			return nil
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
-			if err := createOrUpdateCourierRoute53Record(d); err != nil {
+			if err := courier.CreateOrUpdateCourierRoute53Record(&tfsdk.Resource{d}); err != nil {
 				return fmt.Errorf("updating courier_route53_record: %w", err)
 			}
 			return nil

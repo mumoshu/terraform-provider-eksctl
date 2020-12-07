@@ -4,22 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"time"
 )
 
-type MapReader struct {
-	M map[string]interface{}
-}
-
-func (r *MapReader) Get(k string) interface{} {
-	return r.M[k]
-}
-
-type ResourceReader interface {
-	Get(string) interface{}
-}
-
-func ReadListenerRule(m ResourceReader) (*ListenerRule, error) {
+func ReadListenerRule(m api.Getter) (*ListenerRule, error) {
 	var hosts []string
 	if r := m.Get("hosts").(*schema.Set); r != nil {
 		for _, h := range r.List() {

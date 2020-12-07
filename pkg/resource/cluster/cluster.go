@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"log"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"github.com/rs/xid"
 	"gopkg.in/yaml.v3"
@@ -166,7 +166,7 @@ type Manager struct {
 	DisableClusterNameSuffix bool
 }
 
-func (m *Manager) PrepareClusterSet(d *schema.ResourceData, optNewId ...string) (*ClusterSet, error) {
+func (m *Manager) PrepareClusterSet(d api.UniqueResourceGetter, optNewId ...string) (*ClusterSet, error) {
 	a, err := ReadCluster(d)
 	if err != nil {
 		return nil, err

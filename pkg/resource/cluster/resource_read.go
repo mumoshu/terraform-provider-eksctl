@@ -3,9 +3,11 @@ package cluster
 import (
 	"fmt"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/gensdk"
 )
 
-func ReadCluster(d Read) (*Cluster, error) {
+func ReadCluster(d api.Getter) (*Cluster, error) {
 	a := Cluster{}
 	a.EksctlBin = d.Get(KeyBin).(string)
 	a.EksctlVersion = d.Get(KeyEksctlVersion).(string)
@@ -71,7 +73,7 @@ func ReadCluster(d Read) (*Cluster, error) {
 		for _, r := range albAttachments {
 			m := r.(map[string]interface{})
 
-			r, err := courier.ReadListenerRule(&courier.MapReader{M: m})
+			r, err := courier.ReadListenerRule(&gensdk.MapReader{M: m})
 			if err != nil {
 				return nil, err
 			}

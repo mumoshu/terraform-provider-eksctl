@@ -2,11 +2,12 @@ package cluster
 
 import (
 	"fmt"
-	resource2 "github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"os/exec"
 )
 
-func newEksctlCommandFromResourceWithRegionAndProfile(resource Read, args ...string) (*exec.Cmd, error) {
+func newEksctlCommandFromResourceWithRegionAndProfile(resource api.Getter, args ...string) (*exec.Cmd, error) {
 	eksctlBin := resource.Get(KeyBin).(string)
 	eksctlVersion := resource.Get(KeyEksctlVersion).(string)
 
@@ -15,7 +16,7 @@ func newEksctlCommandFromResourceWithRegionAndProfile(resource Read, args ...str
 		return nil, fmt.Errorf("preparing eksctl binary: %w", err)
 	}
 
-	region, profile := resource2.GetAWSRegionAndProfile(resource)
+	region, profile := sdk.GetAWSRegionAndProfile(resource)
 
 	if region != "" {
 		args = append(args, "--region", region)

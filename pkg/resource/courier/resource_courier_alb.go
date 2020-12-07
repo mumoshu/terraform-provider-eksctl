@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"github.com/rs/xid"
 	"time"
 )
@@ -64,13 +66,13 @@ func ResourceALB() *schema.Resource {
 			id := xid.New().String()
 			d.SetId(id)
 
-			if err := createOrUpdateCourierALB(d); err != nil {
+			if err := courier.CreateOrUpdateCourierALB(&tfsdk.Resource{d}); err != nil {
 				return fmt.Errorf("creating courier_alb: %w", err)
 			}
 			return nil
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
-			if err := createOrUpdateCourierALB(d); err != nil {
+			if err := courier.CreateOrUpdateCourierALB(&tfsdk.Resource{d}); err != nil {
 				return fmt.Errorf("updating courier_alb: %w", err)
 			}
 			return nil
@@ -79,7 +81,7 @@ func ResourceALB() *schema.Resource {
 			return nil
 		},
 		Delete: func(d *schema.ResourceData, meta interface{}) error {
-			if err := deleteCourierALB(d); err != nil {
+			if err := courier.DeleteCourierALB(&tfsdk.Resource{d}); err != nil {
 				return err
 			}
 

@@ -1,15 +1,12 @@
-package resource
+package sdk
 
 import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 )
 
-type Read interface {
-	Get(string) interface{}
-}
-
-func GetAWSRegionAndProfile(d Read) (string, string) {
+func GetAWSRegionAndProfile(d api.Getter) (string, string) {
 	var region string
 
 	if v := d.Get("region"); v != nil {
@@ -25,7 +22,7 @@ func GetAWSRegionAndProfile(d Read) (string, string) {
 	return region, profile
 }
 
-func AWSSessionFromResourceData(d Read) *session.Session {
+func AWSSessionFromResourceData(d api.Getter) *session.Session {
 	region, profile := GetAWSRegionAndProfile(d)
 
 	return awsclicompat.NewSession(region, profile)
