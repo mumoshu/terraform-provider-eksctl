@@ -2,9 +2,7 @@ package cluster
 
 import (
 	"fmt"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/gensdk"
 )
 
 func ReadCluster(d api.Getter) (*Cluster, error) {
@@ -68,49 +66,6 @@ func ReadCluster(d api.Getter) (*Cluster, error) {
 		}
 	}
 
-	if v := d.Get(KeyALBAttachment); v != nil {
-		albAttachments := v.([]interface{})
-		for _, r := range albAttachments {
-			m := r.(map[string]interface{})
-
-			r, err := courier.ReadListenerRule(&gensdk.MapReader{M: m})
-			if err != nil {
-				return nil, err
-			}
-
-			ms := m[KeyMetrics]
-
-			var metrics []courier.Metric
-
-			if ms != nil {
-				var err error
-
-				metrics, err = courier.LoadMetrics(ms.([]interface{}))
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			t := courier.ALBAttachment{
-				NodeGroupName: m["node_group_name"].(string),
-				Weght:         m["weight"].(int),
-				ListenerARN:   r.ListenerARN,
-				Protocol:      m["protocol"].(string),
-				NodePort:      m["node_port"].(int),
-				Priority:      r.Priority,
-				Hosts:         r.Hosts,
-				PathPatterns:  r.PathPatterns,
-				Methods:       r.Methods,
-				SourceIPs:     r.SourceIPs,
-				Headers:       r.Headers,
-				QueryStrings:  r.QueryStrings,
-				Metrics:       metrics,
-			}
-
-			a.ALBAttachments = append(a.ALBAttachments, t)
-		}
-	}
-
 	if v := d.Get(KeyManifests); v != nil {
 		rawManifests := v.([]interface{})
 		for _, m := range rawManifests {
@@ -122,17 +77,6 @@ func ReadCluster(d api.Getter) (*Cluster, error) {
 		tgARNs := v.([]interface{})
 		for _, arn := range tgARNs {
 			a.TargetGroupARNs = append(a.TargetGroupARNs, arn.(string))
-		}
-	}
-
-	if v := d.Get(KeyMetrics); v != nil {
-		metrics := v.([]interface{})
-
-		var err error
-
-		a.Metrics, err = courier.LoadMetrics(metrics)
-		if err != nil {
-			return nil, err
 		}
 	}
 

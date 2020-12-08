@@ -3,55 +3,61 @@ package courier
 import (
 	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"golang.org/x/xerrors"
+	"strconv"
 	"time"
 )
 
-func ReadListenerRule(m api.Getter) (*ListenerRule, error) {
+func ReadListenerRule(m api.Lister, schema *ALBSchema) (*ListenerRule, error) {
 	var hosts []string
-	if r := m.Get("hosts").(*schema.Set); r != nil {
-		for _, h := range r.List() {
+	if r := m.List(schema.Hosts); r != nil {
+		for _, h := range r {
 			hosts = append(hosts, h.(string))
 		}
 	}
 
 	var pathPatterns []string
-	if r := m.Get("path_patterns").(*schema.Set); r != nil {
-		for _, p := range r.List() {
+	if r := m.List(schema.PathPatterns); r != nil {
+		for _, p := range r {
 			pathPatterns = append(pathPatterns, p.(string))
 		}
 	}
 
 	var methods []string
-	if r := m.Get("methods").(*schema.Set); r != nil {
-		for _, p := range r.List() {
+	if r := m.List(schema.Methods); r != nil {
+		for _, p := range r {
 			methods = append(methods, p.(string))
 		}
 	}
 
 	var sourceIPs []string
-	if r := m.Get("source_ips").(*schema.Set); r != nil {
-		for _, p := range r.List() {
+	if r := m.List(schema.SourceIPs); r != nil {
+		for _, p := range r {
 			sourceIPs = append(sourceIPs, p.(string))
 		}
 	}
 
 	var headers map[string][]string
-	if r := m.Get("headers").(map[string]interface{}); r != nil {
-		for k, rawVals := range r {
-			var vs []string
-			for _, rawVal := range rawVals.([]interface{}) {
-				vs = append(vs, rawVal.(string))
+
+	if v := m.Get(schema.Headers); v != nil {
+		if r := v.(map[string]interface{}); r != nil {
+			for k, rawVals := range r {
+				var vs []string
+				for _, rawVal := range rawVals.([]interface{}) {
+					vs = append(vs, rawVal.(string))
+				}
+				headers[k] = vs
 			}
-			headers[k] = vs
 		}
 	}
 
 	var querystrings map[string]string
-	if r := m.Get("querystrings").(map[string]interface{}); r != nil {
-		for k, rawVal := range r {
-			querystrings[k] = rawVal.(string)
+	if v := m.Get(schema.QueryStrings); v != nil {
+		if r := v.(map[string]interface{}); r != nil {
+			for k, rawVal := range r {
+				querystrings[k] = rawVal.(string)
+			}
 		}
 	}
 
@@ -61,9 +67,25 @@ func ReadListenerRule(m api.Getter) (*ListenerRule, error) {
 		return nil, errors.New("one ore more rule condition(s) are required. Specify `hosts`, `path_patterns`, `methods`, `source_ips`, `headers`, or `querystrings`")
 	}
 
+	var priority int
+
+	switch typed := m.Get(schema.Priority).(type) {
+	case int:
+		priority = typed
+	case string:
+		intv, err := strconv.Atoi(typed)
+		if err != nil {
+			return nil, xerrors.Errorf("converting priority %q into int: %w", typed, err)
+		}
+
+		priority = intv
+	default:
+		return nil, xerrors.Errorf("unsupported type of priority: %v(%T)", typed)
+	}
+
 	return &ListenerRule{
-		ListenerARN:  m.Get("listener_arn").(string),
-		Priority:     m.Get("priority").(int),
+		ListenerARN:  m.Get(schema.ListenerARN).(string),
+		Priority:     priority,
 		Hosts:        hosts,
 		PathPatterns: pathPatterns,
 		Methods:      methods,
@@ -73,7 +95,7 @@ func ReadListenerRule(m api.Getter) (*ListenerRule, error) {
 	}, nil
 }
 
-func LoadMetrics(metrics []interface{}) ([]Metric, error) {
+func LoadMetrics(metrics []interface{}, schema *MetricSchema) ([]Metric, error) {
 	var result []Metric
 
 	for _, r := range metrics {
@@ -81,21 +103,21 @@ func LoadMetrics(metrics []interface{}) ([]Metric, error) {
 
 		var max *float64
 
-		if v, set := m["max"]; set {
+		if v, set := m[schema.Max]; set {
 			vv := v.(float64)
 			max = &vv
 		}
 
 		var min *float64
 
-		if v, minSet := m["min"]; minSet {
+		if v, minSet := m[schema.Min]; minSet {
 			vv := v.(float64)
 			min = &vv
 		}
 
 		var interval time.Duration
 
-		if v, set := m["interval"]; set {
+		if v, set := m[schema.Interval]; set {
 			d, err := time.ParseDuration(v.(string))
 			if err != nil {
 				return nil, fmt.Errorf("parsing metric.interval %q: %v", v, err)
@@ -107,10 +129,10 @@ func LoadMetrics(metrics []interface{}) ([]Metric, error) {
 		}
 
 		metric := Metric{
-			Address:    m["address"].(string),
-			Query:      m["query"].(string),
-			AWSRegion:  m["aws_region"].(string),
-			AWSProfile: m["aws_profile"].(string),
+			Address:    m[schema.Address].(string),
+			Query:      m[schema.Query].(string),
+			AWSRegion:  m[schema.AWSRegion].(string),
+			AWSProfile: m[schema.AWSProfile].(string),
 			Max:        max,
 			Min:        min,
 			Interval:   interval,

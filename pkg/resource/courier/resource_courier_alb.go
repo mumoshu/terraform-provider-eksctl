@@ -58,7 +58,42 @@ var MetricsSchema = &schema.Schema{
 	},
 }
 
+func albSchema() *courier.ALBSchema {
+	return &courier.ALBSchema{
+		Address:                   "address",
+		ListenerARN:               "listener_arn",
+		Priority:                  "priority",
+		Destination:               "destination",
+		DestinationTargetGroupARN: "target_group_arn",
+		DestinationWeight:         "weight",
+		StepWeight:                "step_weight",
+		StepInterval:              "step_interval",
+		Hosts:                     "hosts",
+		PathPatterns:              "path_patterns",
+		Methods:                   "methods",
+		SourceIPs:                 "source_ips",
+		Headers:                   "headers",
+		QueryStrings:              "querystrings",
+	}
+}
+
+func metricSchema() *courier.MetricSchema {
+	return &courier.MetricSchema{
+		DatadogMetric:    "datadog_metric",
+		CloudWatchMetric: "cloudwatch_metric",
+		Min:              "min",
+		Max:              "max",
+		Interval:         "interval",
+		Address:          "address",
+		Query:            "query",
+		AWSProfile:       "aws_profile",
+		AWSRegion:        "aws_region",
+	}
+}
+
 func ResourceALB() *schema.Resource {
+	aSchema, mSchema := albSchema(), metricSchema()
+
 	return &schema.Resource{
 		Create: func(d *schema.ResourceData, meta interface{}) error {
 			d.MarkNewResource()
@@ -66,13 +101,13 @@ func ResourceALB() *schema.Resource {
 			id := xid.New().String()
 			d.SetId(id)
 
-			if err := courier.CreateOrUpdateCourierALB(&tfsdk.Resource{d}); err != nil {
+			if err := courier.CreateOrUpdateCourierALB(&tfsdk.Resource{d}, aSchema, mSchema); err != nil {
 				return fmt.Errorf("creating courier_alb: %w", err)
 			}
 			return nil
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
-			if err := courier.CreateOrUpdateCourierALB(&tfsdk.Resource{d}); err != nil {
+			if err := courier.CreateOrUpdateCourierALB(&tfsdk.Resource{d}, aSchema, mSchema); err != nil {
 				return fmt.Errorf("updating courier_alb: %w", err)
 			}
 			return nil
@@ -81,7 +116,7 @@ func ResourceALB() *schema.Resource {
 			return nil
 		},
 		Delete: func(d *schema.ResourceData, meta interface{}) error {
-			if err := courier.DeleteCourierALB(&tfsdk.Resource{d}); err != nil {
+			if err := courier.DeleteCourierALB(&tfsdk.Resource{d}, aSchema, mSchema); err != nil {
 				return err
 			}
 

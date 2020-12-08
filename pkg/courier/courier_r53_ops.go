@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func CreateOrUpdateCourierRoute53Record(d api.Getter) error {
+func CreateOrUpdateCourierRoute53Record(d api.Getter, mSchema *MetricSchema) error {
 	ctx := context.Background()
 
 	sess := sdk.AWSSessionFromResourceData(d)
@@ -33,7 +33,7 @@ func CreateOrUpdateCourierRoute53Record(d api.Getter) error {
 
 	recordName := d.Get("name").(string)
 
-	metrics, err := ReadMetrics(d)
+	metrics, err := ReadMetrics(d, mSchema)
 	if err != nil {
 		return err
 	}

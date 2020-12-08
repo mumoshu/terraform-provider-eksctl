@@ -10,6 +10,8 @@ import (
 )
 
 func ResourceRoute53Record() *schema.Resource {
+	mSchema := metricSchema()
+
 	return &schema.Resource{
 		Create: func(d *schema.ResourceData, meta interface{}) error {
 			d.MarkNewResource()
@@ -17,13 +19,13 @@ func ResourceRoute53Record() *schema.Resource {
 			id := xid.New().String()
 			d.SetId(id)
 
-			if err := courier.CreateOrUpdateCourierRoute53Record(&tfsdk.Resource{d}); err != nil {
+			if err := courier.CreateOrUpdateCourierRoute53Record(&tfsdk.Resource{d}, mSchema); err != nil {
 				return fmt.Errorf("updating courier_route53_record: %w", err)
 			}
 			return nil
 		},
 		Update: func(d *schema.ResourceData, meta interface{}) error {
-			if err := courier.CreateOrUpdateCourierRoute53Record(&tfsdk.Resource{d}); err != nil {
+			if err := courier.CreateOrUpdateCourierRoute53Record(&tfsdk.Resource{d}, mSchema); err != nil {
 				return fmt.Errorf("updating courier_route53_record: %w", err)
 			}
 			return nil

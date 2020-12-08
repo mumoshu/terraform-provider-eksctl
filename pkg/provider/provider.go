@@ -16,7 +16,6 @@ func Provider() terraform.ResourceProvider {
 		Schema: map[string]*schema.Schema{},
 		ResourcesMap: map[string]*schema.Resource{
 			"eksctl_cluster":                cluster.ResourceCluster(),
-			"eksctl_cluster_deployment":     cluster.ResourceClusterDeployment(),
 			"eksctl_iamserviceaccount":      iamserviceaccount.Resource(),
 			"eksctl_courier_alb":            courier.ResourceALB(),
 			"eksctl_courier_route53_record": courier.ResourceRoute53Record(),
