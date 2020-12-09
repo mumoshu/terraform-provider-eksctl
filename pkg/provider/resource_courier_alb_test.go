@@ -90,7 +90,7 @@ func TestAccCourierALB_create(t *testing.T) {
 			resBody, err = json.Marshal(&elbv2.DescribeRulesOutput{
 				Rules: []*elbv2.Rule{},
 			})
-		case "Action=CreateRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=0&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=100&Actions.member.1.Type=forward&Conditions=&ListenerArn=listener_arn&Priority=10&Version=2015-12-01":
+		case "Action=CreateRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=0&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=100&Actions.member.1.Type=forward&Conditions.member.1.Field=host-header&Conditions.member.1.HostHeaderConfig.Values.member.1=example.com&ListenerArn=listener_arn&Priority=10&Version=2015-12-01":
 			params := &elbv2.CreateRuleOutput{
 				Rules: []*elbv2.Rule{
 					{
@@ -303,9 +303,10 @@ func TestAccCourierALB_update(t *testing.T) {
 			resBody = append(resBody, buf.Bytes()...)
 			resBody = append(resBody, []byte("</DescribeListenersResult>")...)
 		case
-			"Action=ModifyRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=1&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=99&Actions.member.1.Order=1&Actions.member.1.Type=forward&RuleArn=rule_arn&Version=2015-12-01",
-			"Action=ModifyRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=51&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=49&Actions.member.1.Order=1&Actions.member.1.Type=forward&RuleArn=rule_arn&Version=2015-12-01",
-			"Action=ModifyRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=100&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=0&Actions.member.1.Order=1&Actions.member.1.Type=forward&RuleArn=rule_arn&Version=2015-12-01":
+			"Action=ModifyRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=0&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=100&Actions.member.1.Type=forward&Conditions.member.1.Field=host-header&Conditions.member.1.HostHeaderConfig.Values.member.1=example.com&RuleArn=rule_arn&Version=2015-12-01",
+			"Action=ModifyRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=1&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=99&Actions.member.1.Type=forward&Conditions.member.1.Field=host-header&Conditions.member.1.HostHeaderConfig.Values.member.1=example.com&RuleArn=rule_arn&Version=2015-12-01",
+			"Action=ModifyRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=51&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=49&Actions.member.1.Type=forward&Conditions.member.1.Field=host-header&Conditions.member.1.HostHeaderConfig.Values.member.1=example.com&RuleArn=rule_arn&Version=2015-12-01",
+			"Action=ModifyRule&Actions.member.1.ForwardConfig.TargetGroups.member.1.TargetGroupArn=prev_arn&Actions.member.1.ForwardConfig.TargetGroups.member.1.Weight=100&Actions.member.1.ForwardConfig.TargetGroups.member.2.TargetGroupArn=next_arn&Actions.member.1.ForwardConfig.TargetGroups.member.2.Weight=0&Actions.member.1.Type=forward&Conditions.member.1.Field=host-header&Conditions.member.1.HostHeaderConfig.Values.member.1=example.com&RuleArn=rule_arn&Version=2015-12-01":
 
 			params := &elbv2.CreateRuleOutput{
 				Rules: []*elbv2.Rule{
@@ -413,6 +414,8 @@ resource "eksctl_courier_alb" "the_listener" {
 
   step_weight = 50
   step_interval = "1s"
+
+  hosts = ["example.com"]
   
   destination {
     target_group_arn = vars.prev_target_group_arn
