@@ -9,7 +9,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk v1.0.0
 	github.com/k-kinzal/progressived v0.0.0-20200911065552-afe494a1cc18
 	github.com/mitchellh/go-linereader v0.0.0-20190213213312-1b945b3263eb
-	github.com/mumoshu/shoal v0.2.16
+	github.com/mumoshu/shoal v0.2.17
 	github.com/rs/xid v1.2.1
 	github.com/stretchr/testify v1.5.1
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58

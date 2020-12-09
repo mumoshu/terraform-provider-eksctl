@@ -1,8 +1,11 @@
 package cluster
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/mumoshu/shoal"
+	"golang.org/x/sync/errgroup"
+	"io"
 	"log"
 	"path/filepath"
 	"sync"
@@ -46,7 +49,9 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 
 	log.Print("Took exclusive lock on shoal")
 
-	s, err := shoal.New(shoal.LogOutput(log.Writer()))
+	logReader, logWriter := io.Pipe()
+
+	s, err := shoal.New(shoal.LogOutput(logWriter))
 	if err != nil {
 		return nil, err
 	}
@@ -66,11 +71,33 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 
 		log.Print("Shoal's Git provider initialized")
 
-		if err := s.Sync(conf); err != nil {
+		eg  := errgroup.Group{}
+
+		eg.Go(func() error {
+			defer logWriter.Close()
+
+			if err := s.Sync(conf); err != nil {
+				return err
+			}
+
+			return nil
+		})
+
+		scanner := bufio.NewScanner(logReader)
+
+		eg.Go(func() error {
+			for scanner.Scan() {
+				log.Printf("shoal] %s", scanner.Text())
+			}
+
+			return nil
+		})
+
+		if err := eg.Wait(); err != nil {
 			return nil, err
 		}
 
-		log.Print("Shoal sync finished")
+		log.Println("Shoal sync finished")
 	}
 
 	binPath := s.BinPath()
