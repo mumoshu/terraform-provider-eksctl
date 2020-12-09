@@ -46,7 +46,7 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 
 	log.Print("Took exclusive lock on shoal")
 
-	s, err := shoal.New()
+	s, err := shoal.New(shoal.LogOutput(log.Writer()))
 	if err != nil {
 		return nil, err
 	}
