@@ -59,6 +59,18 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 	log.Print("Shoal instance created")
 
 	if len(conf.Dependencies) > 0 {
+		eg  := errgroup.Group{}
+
+		scanner := bufio.NewScanner(logReader)
+
+		eg.Go(func() error {
+			for scanner.Scan() {
+				log.Printf("shoal] %s", scanner.Text())
+			}
+
+			return nil
+		})
+
 		if err := s.Init(); err != nil {
 			return nil, fmt.Errorf("initializing shoal: %w", err)
 		}
@@ -71,23 +83,11 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 
 		log.Print("Shoal's Git provider initialized")
 
-		eg  := errgroup.Group{}
-
 		eg.Go(func() error {
 			defer logWriter.Close()
 
 			if err := s.Sync(conf); err != nil {
 				return err
-			}
-
-			return nil
-		})
-
-		scanner := bufio.NewScanner(logReader)
-
-		eg.Go(func() error {
-			for scanner.Scan() {
-				log.Printf("shoal] %s", scanner.Text())
 			}
 
 			return nil
