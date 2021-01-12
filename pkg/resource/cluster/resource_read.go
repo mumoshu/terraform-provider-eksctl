@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 )
 
@@ -78,6 +79,10 @@ func ReadCluster(d api.Getter) (*Cluster, error) {
 		for _, arn := range tgARNs {
 			a.TargetGroupARNs = append(a.TargetGroupARNs, arn.(string))
 		}
+	}
+
+	if cfg := sdk.GetAssumeRoleConfig(d); cfg != nil {
+		a.AssumeRoleConfig = cfg
 	}
 
 	fmt.Printf("Read Cluster:\n%+v", a)

@@ -6,5 +6,16 @@ import (
 )
 
 func AWSSessionFromCluster(cluster *Cluster) *session.Session {
-	return awsclicompat.NewSession(cluster.Region, cluster.Profile)
+	sess := awsclicompat.NewSession(cluster.Region, cluster.Profile)
+
+	if cluster.AssumeRoleConfig == nil {
+		return sess
+	}
+
+	newSess, err := awsclicompat.AssumeRole(sess, *cluster.AssumeRoleConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	return newSess
 }

@@ -143,6 +143,7 @@ func ResourceALB() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
+			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
 			"listener_arn": {
 				Type:     schema.TypeString,
 				Required: true,

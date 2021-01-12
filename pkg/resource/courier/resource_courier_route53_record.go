@@ -57,6 +57,7 @@ func ResourceRoute53Record() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
+			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
 			"zone_id": {
 				Type:     schema.TypeString,
 				Required: true,

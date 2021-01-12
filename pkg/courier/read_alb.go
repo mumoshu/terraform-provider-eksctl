@@ -30,9 +30,13 @@ type ALBSchema struct {
 func ReadCourierALB(d api.Lister, schema *ALBSchema, metricSchema *MetricSchema) (*CourierALB, error) {
 	region, profile := sdk.GetAWSRegionAndProfile(d)
 
+	sess := sdk.AWSSessionFromResourceData(d)
+
 	conf := CourierALB{
-		Region:  region,
-		Profile: profile,
+		Region:           region,
+		Profile:          profile,
+		AssumeRoleConfig: sdk.GetAssumeRoleConfig(d),
+		Session:          sess,
 	}
 
 	if v := d.Get(schema.Address); v != nil {

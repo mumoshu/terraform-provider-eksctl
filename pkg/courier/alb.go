@@ -3,6 +3,7 @@ package courier
 import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"log"
@@ -11,23 +12,25 @@ import (
 )
 
 type CourierALB struct {
-	Address      string
-	ListenerARN  string
-	Priority     int
-	ListenerRule *ListenerRule
-	Region       string
-	Profile      string
-	Destinations []Destination
-	StepWeight   int
-	StepInterval time.Duration
-	Metrics      []Metric
+	Address          string
+	ListenerARN      string
+	Priority         int
+	ListenerRule     *ListenerRule
+	Region           string
+	Profile          string
+	Destinations     []Destination
+	StepWeight       int
+	StepInterval     time.Duration
+	Metrics          []Metric
+	Session          *session.Session
+	AssumeRoleConfig *awsclicompat.AssumeRoleConfig
 }
 
 type ALB struct {
 }
 
 func (a *ALB) Delete(d *CourierALB) error {
-	sess := awsclicompat.NewSession(d.Region, d.Profile)
+	sess := d.Session
 
 	sess.Config.Endpoint = &d.Address
 

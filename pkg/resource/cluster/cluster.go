@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"log"
 	"time"
@@ -82,6 +83,7 @@ type Cluster struct {
 	ALBAttachments   []courier.ALBAttachment
 	TargetGroupARNs  []string
 	Metrics          []courier.Metric
+	AssumeRoleConfig *awsclicompat.AssumeRoleConfig
 }
 
 func (c Cluster) IAMWithOIDCEnabled() (bool, error) {

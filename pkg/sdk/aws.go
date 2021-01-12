@@ -25,5 +25,33 @@ func GetAWSRegionAndProfile(d api.Getter) (string, string) {
 func AWSSessionFromResourceData(d api.Getter) *session.Session {
 	region, profile := GetAWSRegionAndProfile(d)
 
-	return awsclicompat.NewSession(region, profile)
+	sess := awsclicompat.NewSession(region, profile)
+
+	assumeRoleConfig := GetAssumeRoleConfig(d)
+	if assumeRoleConfig == nil {
+		return sess
+	}
+
+	newSess, err := awsclicompat.AssumeRole(sess, *assumeRoleConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	return newSess
+}
+
+
+func AWSSession(region, profile string, assumeRoleConfig *awsclicompat.AssumeRoleConfig) *session.Session {
+	sess := awsclicompat.NewSession(region, profile)
+
+	if assumeRoleConfig == nil {
+		return sess
+	}
+
+	newSess, err := awsclicompat.AssumeRole(sess, *assumeRoleConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	return newSess
 }

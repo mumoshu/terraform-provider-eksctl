@@ -70,6 +70,8 @@ func CreateOrUpdateCourierRoute53Record(d api.Getter, mSchema *MetricSchema) err
 		stepWeight = v.(int)
 	}
 
+	assumeRoleConfig := sdk.GetAssumeRoleConfig(d)
+
 	r := &Route53RecordSetRouter{
 		Service:                   svc,
 		RecordName:                recordName,
@@ -91,7 +93,7 @@ func CreateOrUpdateCourierRoute53Record(d api.Getter, mSchema *MetricSchema) err
 	}
 
 	e.Go(func() error {
-		return Analyze(errctx, region, profile, metrics, &templateData{})
+		return Analyze(errctx, region, profile, assumeRoleConfig, metrics, &templateData{})
 	})
 
 	return e.Wait()

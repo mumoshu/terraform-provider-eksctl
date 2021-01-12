@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"log"
 	"regexp"
 	"runtime/debug"
@@ -145,6 +146,7 @@ func ResourceCluster() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
+			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
 			KeyName: {
 				Type:     schema.TypeString,
 				Required: true,

@@ -7,12 +7,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier/metrics"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"os"
 	"text/template"
 	"time"
 )
 
-func MetricsToAnalyzers(region, profile string, ms []Metric) ([]*Analyzer, error) {
+func MetricsToAnalyzers(region, profile string, assumeRoleConfig *awsclicompat.AssumeRoleConfig, ms []Metric) ([]*Analyzer, error) {
 	var analyzers []*Analyzer
 
 	for _, m := range ms {
@@ -30,7 +31,7 @@ func MetricsToAnalyzers(region, profile string, ms []Metric) ([]*Analyzer, error
 				profile = m.AWSProfile
 			}
 
-			s := awsclicompat.NewSession(region, profile)
+			s := sdk.AWSSession(region, profile, assumeRoleConfig)
 
 			s.Config.Endpoint = aws.String(m.Address)
 			c := cloudwatch.New(s)

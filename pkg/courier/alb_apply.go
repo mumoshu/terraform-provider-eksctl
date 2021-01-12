@@ -7,7 +7,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/google/go-cmp/cmp"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 	"log"
@@ -18,7 +17,7 @@ import (
 func (a *ALB) Apply(d *CourierALB) error {
 	log.SetFlags(log.Lshortfile)
 
-	sess := awsclicompat.NewSession(d.Region, d.Profile)
+	sess := d.Session
 
 	sess.Config.Endpoint = &d.Address
 
@@ -211,7 +210,7 @@ func (a *ALB) Apply(d *CourierALB) error {
 		region, profile := d.Region, d.Profile
 
 		e.Go(func() error {
-			return Analyze(errctx, region, profile, l.Metrics, data)
+			return Analyze(errctx, region, profile, d.AssumeRoleConfig, l.Metrics, data)
 		})
 
 		if err := e.Wait(); err != nil {

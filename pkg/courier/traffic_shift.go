@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"golang.org/x/sync/errgroup"
 	"log"
 	"time"
@@ -78,12 +79,12 @@ func DoGradualTrafficShift(ctx context.Context, svc elbv2iface.ELBV2API, l Liste
 	return nil
 }
 
-func Analyze(ctx context.Context, region, profile string, metrics []Metric, data interface{}) error {
+func Analyze(ctx context.Context, region, profile string, assumeRoleConfig *awsclicompat.AssumeRoleConfig, metrics []Metric, data interface{}) error {
 	var analyzers []*Analyzer
 	{
 		var err error
 
-		analyzers, err = MetricsToAnalyzers(region, profile, metrics)
+		analyzers, err = MetricsToAnalyzers(region, profile, assumeRoleConfig, metrics)
 		if err != nil {
 			return err
 		}

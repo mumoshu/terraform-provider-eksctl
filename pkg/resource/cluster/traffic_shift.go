@@ -23,7 +23,7 @@ func graduallyShiftTraffic(set *ClusterSet, opts courier.CanaryOpts) error {
 	{
 		var err error
 
-		m.Analyzers, err = courier.MetricsToAnalyzers(cluster.Region, cluster.Profile, cluster.Metrics)
+		m.Analyzers, err = courier.MetricsToAnalyzers(cluster.Region, cluster.Profile, cluster.AssumeRoleConfig, cluster.Metrics)
 		if err != nil {
 			return err
 		}
