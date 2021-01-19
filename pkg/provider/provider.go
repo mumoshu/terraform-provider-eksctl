@@ -15,7 +15,7 @@ func Provider() terraform.ResourceProvider {
 	// The actual provider
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			"assume_role": tfsdk.AssumeRoleSchema(),
+			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"eksctl_cluster":                cluster.ResourceCluster(),

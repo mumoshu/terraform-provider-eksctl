@@ -6,6 +6,10 @@ variable "region" {
   description = "AWS region"
 }
 
+variable "myip" {
+
+}
+
 provider "aws" {
   version = ">= 2.70.0"
   region = "us-east-2"
@@ -75,8 +79,7 @@ module "vpc" {
 }
 
 locals {
-  myip = "x.x.x.x"
-  myip_cidr = "${local.myip}/32"
+  myip_cidr = "${var.myip}/32"
   podinfo_nodeport = 30080
 }
 
