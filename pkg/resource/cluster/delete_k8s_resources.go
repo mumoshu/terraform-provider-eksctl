@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"golang.org/x/xerrors"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,24 +17,24 @@ func doDeleteKubernetesResourcesBeforeDestroy(cluster *Cluster, id string) error
 
 	kubeconfig, err := ioutil.TempFile("", "terraform-provider-eksctl-kubeconfig-")
 	if err != nil {
-		return err
+		return xerrors.Errorf("creating temp kubeconfig file: %w", err)
 	}
 
 	kubeconfigPath := kubeconfig.Name()
 
 	if err := kubeconfig.Close(); err != nil {
-		return err
+		return xerrors.Errorf("writing kubeconfig: %w", err)
 	}
 
 	clusterName := cluster.Name + "-" + id
 
 	writeKubeconfigCmd, err := newEksctlCommandWithAWSProfile(cluster, "utils", "write-kubeconfig", "--kubeconfig", kubeconfigPath, "--cluster", clusterName, "--region", cluster.Region)
 	if err != nil {
-		return err
+		return xerrors.Errorf("initializing eksctl-utils-write-kubeconfig: %w", err)
 	}
 
 	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
-		return err
+		return xerrors.Errorf("running eksctl-utils-write-kubeconfig: %w", err)
 	}
 
 	for _, d := range cluster.DeleteKubernetesResourcesBeforeDestroy {
@@ -52,7 +53,8 @@ func doDeleteKubernetesResourcesBeforeDestroy(cluster *Cluster, id string) error
 				log.Printf("Ignoring `kubectl delete` error %w. %s/%s/%s seems already deleted. Perhaps it is a stale cluster that was in the middle of deletion process?", err, d.Namespace, d.Kind, d.Name)
 				continue
 			}
-			return err
+
+			return xerrors.Errorf("running kubectl-delete: %w", err)
 		}
 	}
 

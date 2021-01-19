@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
+	"golang.org/x/xerrors"
 	"log"
 	"strconv"
 	"time"
@@ -42,7 +43,7 @@ func (a *ALB) Delete(d *CourierALB) error {
 		ListenerArn: aws.String(listenerARN),
 	})
 	if err != nil {
-		return err
+		return xerrors.Errorf("calling elbv2.DescribeRules: %w", err)
 	}
 
 	priority := d.Priority

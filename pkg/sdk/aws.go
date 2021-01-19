@@ -40,7 +40,6 @@ func AWSSessionFromResourceData(d api.Getter) *session.Session {
 	return newSess
 }
 
-
 func AWSSession(region, profile string, assumeRoleConfig *awsclicompat.AssumeRoleConfig) *session.Session {
 	sess := awsclicompat.NewSession(region, profile)
 

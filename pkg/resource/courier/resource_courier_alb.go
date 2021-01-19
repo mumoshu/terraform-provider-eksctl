@@ -7,6 +7,7 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"github.com/rs/xid"
+	"golang.org/x/xerrors"
 	"time"
 )
 
@@ -117,7 +118,7 @@ func ResourceALB() *schema.Resource {
 		},
 		Delete: func(d *schema.ResourceData, meta interface{}) error {
 			if err := courier.DeleteCourierALB(&tfsdk.Resource{d}, aSchema, mSchema); err != nil {
-				return err
+				return xerrors.Errorf("deleting courier ALB: %w", err)
 			}
 
 			d.SetId("")

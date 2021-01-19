@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/k-kinzal/progressived/pkg/provider"
+	"golang.org/x/xerrors"
 	"log"
 	"time"
 )
@@ -45,7 +46,7 @@ func (r *Route53RecordSetRouter) TrafficShift(ctx context.Context) error {
 	})
 
 	if err != nil {
-		return err
+		return xerrors.Errorf("initializing courier Route 53: %w", err)
 	}
 
 	// Gradually shift traffic from current tg to desired tg by

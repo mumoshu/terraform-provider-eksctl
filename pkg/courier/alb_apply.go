@@ -29,7 +29,7 @@ func (a *ALB) Apply(d *CourierALB) error {
 		ListenerArn: aws.String(listenerARN),
 	})
 	if err != nil {
-		return err
+		return xerrors.Errorf("calling elbv2.DescribeRules: %w", err)
 	}
 
 	priority := d.Priority
@@ -150,7 +150,9 @@ func (a *ALB) Apply(d *CourierALB) error {
 			},
 		})
 		if err != nil {
-			return err
+			log.Printf("elbv2.DescribeTargetGroups failed. TargetGroupArns=%v,%v Error=%v", nextTGARN, prevTGARN, err)
+
+			return xerrors.Errorf("calling elbv2.DescribeTargetGroups: %w", err)
 		}
 
 		var desired, current *elbv2.TargetGroup
@@ -179,7 +181,9 @@ func (a *ALB) Apply(d *CourierALB) error {
 			ListenerArns: aws.StringSlice([]string{lr.ListenerARN}),
 		})
 		if err != nil {
-			return err
+			log.Printf("elbv2.DescribeListeners failed: ListenerArns=%v Error=%v", lr.ListenerARN, err)
+
+			return xerrors.Errorf("calling elbv2.DescribeListeners: %w", err)
 		}
 
 		l := ListenerStatus{
@@ -214,13 +218,10 @@ func (a *ALB) Apply(d *CourierALB) error {
 		})
 
 		if err := e.Wait(); err != nil {
-			return err
+			return xerrors.Errorf("shifting traffic over ALB: %w", err)
 		}
 	}
 
-	if err != nil {
-		return err
-	}
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier/metrics"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"golang.org/x/xerrors"
 	"os"
 	"text/template"
 	"time"
@@ -109,7 +110,7 @@ func (a *Analyzer) Analyze(data interface{}) error {
 	}
 
 	if err != nil {
-		return err
+		return xerrors.Errorf("executing query on metric provider %d time(s): %w", maxRetries, err)
 	}
 
 	if a.Min != nil && *a.Min > v {

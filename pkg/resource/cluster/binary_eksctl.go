@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/mumoshu/shoal"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/xerrors"
 	"io"
 	"log"
 	"path/filepath"
@@ -59,7 +60,7 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 	log.Print("Shoal instance created")
 
 	if len(conf.Dependencies) > 0 {
-		eg  := errgroup.Group{}
+		eg := errgroup.Group{}
 
 		scanner := bufio.NewScanner(logReader)
 
@@ -87,14 +88,14 @@ func prepareEksctlBinaryInternal(eksctlBin, eksctlVersion string) (*string, erro
 			defer logWriter.Close()
 
 			if err := s.Sync(conf); err != nil {
-				return err
+				return xerrors.Errorf("running shoal-sync: %w", err)
 			}
 
 			return nil
 		})
 
 		if err := eg.Wait(); err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("calling shoal: %w", err)
 		}
 
 		log.Println("Shoal sync finished")

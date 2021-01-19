@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/xerrors"
 	"log"
 	"sync"
 	"time"
@@ -25,7 +26,7 @@ func graduallyShiftTraffic(set *ClusterSet, opts courier.CanaryOpts) error {
 
 		m.Analyzers, err = courier.MetricsToAnalyzers(cluster.Region, cluster.Profile, cluster.AssumeRoleConfig, cluster.Metrics)
 		if err != nil {
-			return err
+			return xerrors.Errorf("initializing analyzer: %w", err)
 		}
 	}
 
@@ -78,7 +79,7 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts co
 					return nil
 				case <-ticker.C:
 					if err := a.Analyze(opts); err != nil {
-						return err
+						return xerrors.Errorf("analyze: %w", err)
 					}
 				}
 			}

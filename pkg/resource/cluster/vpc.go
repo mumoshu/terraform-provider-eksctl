@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"golang.org/x/xerrors"
 	"log"
 )
 
@@ -21,16 +22,20 @@ func createVPCResourceTags(cluster *Cluster, clusterName ClusterName) error {
 
 	resources := getVpcResources(cluster)
 
+	tag := ec2.Tag{
+		Key:   aws.String(tagKey),
+		Value: aws.String(tagValue),
+	}
+
 	if _, err := ec2session.CreateTags(&ec2.CreateTagsInput{
 		Resources: resources,
 		Tags: []*ec2.Tag{
-			{
-				Key:   aws.String(tagKey),
-				Value: aws.String(tagValue),
-			},
+			&tag,
 		},
 	}); err != nil {
-		return err
+		log.Printf("ec2.CreateTags failed: Resources=%+v Tags=%v Error=%v", resources, tag, err)
+
+		return xerrors.Errorf("calling ec2.CreateTags: %w", err)
 	}
 
 	return nil
@@ -68,15 +73,19 @@ func deleteVPCResourceTags(cluster *Cluster, clusterName ClusterName) error {
 
 	resources := getVpcResources(cluster)
 
+	tag := ec2.Tag{
+		Key: aws.String(tagKey),
+	}
+
 	if _, err := ec2session.DeleteTags(&ec2.DeleteTagsInput{
 		Resources: resources,
 		Tags: []*ec2.Tag{
-			{
-				Key: aws.String(tagKey),
-			},
+			&tag,
 		},
 	}); err != nil {
-		return err
+		log.Printf("ec2.DeleteTags failed: Resources=%+v, Tags=%v", resources, tag)
+
+		return xerrors.Errorf("calling ec2.DeleteTags: %w", err)
 	}
 
 	return nil

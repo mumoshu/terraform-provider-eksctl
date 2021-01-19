@@ -8,6 +8,8 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/xerrors"
+	"log"
 	"time"
 )
 
@@ -26,7 +28,9 @@ func CreateOrUpdateCourierRoute53Record(d api.Getter, mSchema *MetricSchema) err
 
 	_, err := svc.GetHostedZone(&route53.GetHostedZoneInput{Id: aws.String(zoneID)})
 	if err != nil {
-		return err
+		log.Printf("route53.GetHostedZone failed: Id=%s Error=%v", zoneID, err)
+
+		return xerrors.Errorf("calling route53.GetHostedZone: %w", err)
 	}
 
 	region, profile := sdk.GetAWSRegionAndProfile(d)
@@ -35,7 +39,7 @@ func CreateOrUpdateCourierRoute53Record(d api.Getter, mSchema *MetricSchema) err
 
 	metrics, err := ReadMetrics(d, mSchema)
 	if err != nil {
-		return err
+		return xerrors.Errorf("reading metrics definition: %w", err)
 	}
 
 	var destinations []DestinationRecordSet

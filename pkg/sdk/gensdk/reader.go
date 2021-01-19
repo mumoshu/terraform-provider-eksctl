@@ -15,4 +15,3 @@ func (r *MapReader) List(k string) []interface{} {
 
 	return nil
 }
-
