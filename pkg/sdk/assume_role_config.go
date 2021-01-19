@@ -14,11 +14,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"log"
 )
 
 func GetAssumeRoleConfig(d api.Getter) (config *awsclicompat.AssumeRoleConfig) {
-	if l, ok := d.Get("assume_role").([]interface{}); ok && len(l) > 0 && l[0] != nil {
+	if l, ok := d.Get(tfsdk.KeyAssumeRole).([]interface{}); ok && len(l) > 0 && l[0] != nil {
 		config = &awsclicompat.AssumeRoleConfig{}
 
 		m := l[0].(map[string]interface{})

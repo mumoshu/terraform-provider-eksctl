@@ -2,12 +2,17 @@ package iamserviceaccount
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"os/exec"
 )
 
 const KeyNamespace = "namespace"
 const KeyName = "name"
+const KeyRegion = "region"
+const KeyProfile = "profile"
 const KeyCluster = "cluster"
 const KeyOverrideExistingServiceAccounts = "override_existing_serviceaccounts"
 const KeyAttachPolicyARN = "attach_policy_arn"
@@ -16,6 +21,8 @@ func Resource() *schema.Resource {
 	return &schema.Resource{
 		Create: func(d *schema.ResourceData, meta interface{}) error {
 			a := ReadIAMServiceAccount(d)
+
+			ctx := mustContext(a)
 
 			args := []string{
 				"create",
@@ -37,10 +44,12 @@ func Resource() *schema.Resource {
 				)
 			}
 
-			return resource.Create(exec.Command("eksctl", args...), d, "")
+			return ctx.Create(exec.Command("eksctl", args...), d, "")
 		},
 		Delete: func(d *schema.ResourceData, meta interface{}) error {
 			a := ReadIAMServiceAccount(d)
+
+			ctx := mustContext(a)
 
 			args := []string{
 				"delete",
@@ -50,9 +59,12 @@ func Resource() *schema.Resource {
 				"--namespace", a.Namespace,
 			}
 
-			return resource.Delete(exec.Command("eksctl", args...), d)
+			return ctx.Delete(exec.Command("eksctl", args...))
 		},
 		Read: func(d *schema.ResourceData, meta interface{}) error {
+			return nil
+		},
+		Update: func(data *schema.ResourceData, i interface{}) error {
 			return nil
 		},
 		Schema: map[string]*schema.Schema{
@@ -66,6 +78,16 @@ func Resource() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 				ForceNew: true,
+			},
+			KeyRegion: {
+				Type:     schema.TypeString,
+				Required: true,
+				ForceNew: true,
+			},
+			KeyProfile: {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: false,
 			},
 			KeyCluster: {
 				Type:     schema.TypeString,
@@ -82,6 +104,7 @@ func Resource() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
+			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
 			resource.KeyOutput: {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -93,18 +116,26 @@ func Resource() *schema.Resource {
 type IAMServiceAccount struct {
 	Name                            string
 	Namespace                       string
+	Region                          string
+	Profile                         string
 	Cluster                         string
 	AttachPolicyARN                 string
 	OverrideExistingServiceAccounts bool
 	Output                          string
+	AssumeRoleConfig                *awsclicompat.AssumeRoleConfig
 }
 
 func ReadIAMServiceAccount(d *schema.ResourceData) *IAMServiceAccount {
 	a := IAMServiceAccount{}
 	a.Namespace = d.Get(KeyNamespace).(string)
 	a.Name = d.Get(KeyName).(string)
+	a.Region = d.Get(KeyRegion).(string)
 	a.Cluster = d.Get(KeyCluster).(string)
 	a.AttachPolicyARN = d.Get(KeyAttachPolicyARN).(string)
 	a.OverrideExistingServiceAccounts = d.Get(KeyOverrideExistingServiceAccounts).(bool)
+	if cfg := sdk.GetAssumeRoleConfig(d); cfg != nil {
+		a.AssumeRoleConfig = cfg
+	}
+
 	return &a
 }

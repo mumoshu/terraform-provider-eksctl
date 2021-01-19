@@ -32,7 +32,7 @@ func AWSSessionFromResourceData(d api.Getter) *session.Session {
 		return sess
 	}
 
-	newSess, err := awsclicompat.AssumeRole(sess, *assumeRoleConfig)
+	newSess, _, err := awsclicompat.AssumeRole(sess, *assumeRoleConfig)
 	if err != nil {
 		panic(err)
 	}
@@ -47,7 +47,7 @@ func AWSSession(region, profile string, assumeRoleConfig *awsclicompat.AssumeRol
 		return sess
 	}
 
-	newSess, err := awsclicompat.AssumeRole(sess, *assumeRoleConfig)
+	newSess, _, err := awsclicompat.AssumeRole(sess, *assumeRoleConfig)
 	if err != nil {
 		panic(err)
 	}

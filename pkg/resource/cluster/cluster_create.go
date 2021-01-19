@@ -3,6 +3,7 @@ package cluster
 import (
 	"bytes"
 	"fmt"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"io/ioutil"
 	"log"
@@ -12,8 +13,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
-)
+	)
 
 func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	id := newClusterID()
@@ -27,6 +27,8 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 
 	cluster := set.Cluster
 
+	ctx := mustNewContext(cluster)
+
 	if err := createVPCResourceTags(cluster, set.ClusterName); err != nil {
 		return nil, err
 	}
@@ -38,27 +40,27 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 
 	cmd.Stdin = bytes.NewReader(set.ClusterConfig)
 
-	if err := resource.Create(cmd, d, id); err != nil {
-		return nil, fmt.Errorf("running `eksctl create cluster: %w: USED CLUSTER CONFIG:\n%s", err, string(set.ClusterConfig))
+	if err := ctx.Create(cmd, d, id); err != nil {
+		return nil, fmt.Errorf("running `eksctl create cluster`: %w: USED CLUSTER CONFIG:\n%s", err, string(set.ClusterConfig))
 	}
 
-	if err := doWriteKubeconfig(d, string(set.ClusterName), cluster.Region); err != nil {
+	if err := doWriteKubeconfig(ctx, d, string(set.ClusterName), cluster.Region); err != nil {
 		return nil, err
 	}
 
-	if err := doApplyKubernetesManifests(cluster, id); err != nil {
+	if err := doApplyKubernetesManifests(ctx, cluster, id); err != nil {
 		return nil, err
 	}
 
-	if err := doAttachAutoScalingGroupsToTargetGroups(set); err != nil {
+	if err := doAttachAutoScalingGroupsToTargetGroups(ctx, set); err != nil {
 		return nil, err
 	}
 
-	if err := doCheckPodsReadiness(cluster, id); err != nil {
+	if err := doCheckPodsReadiness(ctx, cluster, id); err != nil {
 		return nil, err
 	}
 
-	if err := createIAMIdentityMapping(d, cluster); err != nil {
+	if err := createIAMIdentityMapping(ctx, d, cluster); err != nil {
 		return nil, err
 	}
 
@@ -79,7 +81,7 @@ func (m *Manager) doPlanKubeconfig(d *DiffReadWrite) error {
 	return nil
 }
 
-func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
+func doWriteKubeconfig(ctx *sdk.Context, d ReadWrite, clusterName, region string) error {
 	var path string
 
 	if v := d.Get(KeyKubeconfigPath); v != nil {
@@ -106,8 +108,8 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 	cmd.Env = append(cmd.Env, os.Environ()...)
 	cmd.Env = append(cmd.Env, "KUBECONFIG="+path)
 
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed running %s %s: %vw: COMBINED OUTPUT:\n%s", cmd.Path, strings.Join(cmd.Args, " "), err, string(out))
+	if out, err := ctx.Run(cmd); err != nil {
+		return fmt.Errorf("failed running %s %s: %vw: COMBINED OUTPUT:\n%s", cmd.Path, strings.Join(cmd.Args, " "), err, out.Output)
 	}
 
 	log.Printf("Ran `%s %s` with KUBECONFIG=%s", cmd.Path, strings.Join(cmd.Args, " "), path)
@@ -139,8 +141,8 @@ func doWriteKubeconfig(d ReadWrite, clusterName, region string) error {
 	return nil
 }
 
-func createIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
-	iams, err := runGetIAMIdentityMapping(d, cluster)
+func createIAMIdentityMapping(ctx *sdk.Context, d ReadWrite, cluster *Cluster) error {
+	iams, err := runGetIAMIdentityMapping(ctx, d, cluster)
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
 	}
@@ -155,7 +157,7 @@ func createIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 
 	if d.Get(KeyIAMIdentityMapping) != nil {
 		values := d.Get(KeyIAMIdentityMapping).(*schema.Set)
-		if err := runCreateIAMIdentityMapping(d, values, cluster); err != nil {
+		if err := runCreateIAMIdentityMapping(ctx, d, values, cluster); err != nil {
 			return fmt.Errorf("creating create  imaidentitymapping command: %w", err)
 		}
 
@@ -167,7 +169,7 @@ func createIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 	return nil
 }
 
-func runCreateIAMIdentityMapping(d api.Getter, s *schema.Set, cluster *Cluster) error {
+func runCreateIAMIdentityMapping(ctx *sdk.Context, d api.Getter, s *schema.Set, cluster *Cluster) error {
 	values := s.List()
 	for _, v := range values {
 		ele := v.(map[string]interface{})
@@ -196,7 +198,7 @@ func runCreateIAMIdentityMapping(d api.Getter, s *schema.Set, cluster *Cluster) 
 			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
 		}
 
-		res, err := resource.Run(cmd)
+		res, err := ctx.Run(cmd)
 		if err != nil {
 			return fmt.Errorf("running create imaidentitymapping command: %w", err)
 		}
@@ -206,7 +208,7 @@ func runCreateIAMIdentityMapping(d api.Getter, s *schema.Set, cluster *Cluster) 
 	return nil
 }
 
-func runDeleteIAMIdentityMapping(d api.Getter, s *schema.Set, cluster *Cluster) error {
+func runDeleteIAMIdentityMapping(ctx *sdk.Context, d api.Getter, s *schema.Set, cluster *Cluster) error {
 	values := s.List()
 	for _, v := range values {
 		ele := v.(map[string]interface{})
@@ -225,7 +227,7 @@ func runDeleteIAMIdentityMapping(d api.Getter, s *schema.Set, cluster *Cluster) 
 			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
 		}
 
-		res, err := resource.Run(cmd)
+		res, err := ctx.Run(cmd)
 		if err != nil {
 			return fmt.Errorf("creating create-iamidentitymapping command: %w", err)
 		}

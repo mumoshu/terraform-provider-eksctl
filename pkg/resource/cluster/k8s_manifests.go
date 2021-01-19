@@ -3,14 +3,14 @@ package cluster
 import (
 	"bytes"
 	"fmt"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
 )
 
-func doApplyKubernetesManifests(cluster *Cluster, id string) error {
+func doApplyKubernetesManifests(ctx *sdk.Context, cluster *Cluster, id string) error {
 	if len(cluster.Manifests) == 0 {
 		return nil
 	}
@@ -33,7 +33,7 @@ func doApplyKubernetesManifests(cluster *Cluster, id string) error {
 		return fmt.Errorf("creating eksctl-utils-write-kubeconfig command: %w", err)
 	}
 
-	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
+	if _, err := ctx.Run(writeKubeconfigCmd); err != nil {
 		return err
 	}
 
@@ -51,7 +51,7 @@ func doApplyKubernetesManifests(cluster *Cluster, id string) error {
 
 	kubectlCmd.Stdin = bytes.NewBufferString(all)
 
-	if _, err := resource.Run(kubectlCmd); err != nil {
+	if _, err := ctx.Run(kubectlCmd); err != nil {
 		return err
 	}
 

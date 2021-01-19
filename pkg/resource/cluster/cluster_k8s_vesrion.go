@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"log"
 	"strconv"
 )
@@ -15,7 +15,7 @@ type LiveClusterInfo struct {
 	Revision          int
 }
 
-func getLiveClusterInfo(d *schema.ResourceData) (*LiveClusterInfo, error) {
+func getLiveClusterInfo(ctx *sdk.Context, d *schema.ResourceData) (*LiveClusterInfo, error) {
 	log.Printf("[DEBUG] getting eksctl cluster k8s version with id %q", d.Id())
 
 	m := &Manager{}
@@ -44,7 +44,7 @@ func getLiveClusterInfo(d *schema.ResourceData) (*LiveClusterInfo, error) {
 
 	cmd.Stdin = bytes.NewReader(set.ClusterConfig)
 
-	res, err := resource.Run(cmd)
+	res, err := ctx.Run(cmd)
 	if err != nil {
 		return nil, err
 	}

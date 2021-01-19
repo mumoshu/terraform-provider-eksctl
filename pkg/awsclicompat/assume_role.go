@@ -21,7 +21,7 @@ type AssumeRoleConfig struct {
 	TransitiveTagKeys []string
 }
 
-func AssumeRole(sess *session.Session, config AssumeRoleConfig) (*session.Session, error) {
+func AssumeRole(sess *session.Session, config AssumeRoleConfig) (*session.Session, *sts.Credentials, error) {
 	var awsDurationSeconds *int64
 
 	if config.DurationSeconds != 0 {
@@ -70,10 +70,10 @@ func AssumeRole(sess *session.Session, config AssumeRoleConfig) (*session.Sessio
 
 	assumedRole, err := stsSvc.AssumeRole(input)
 	if err != nil {
-		return nil, xerrors.Errorf("failed assuming role: %w", err)
+		return nil, nil, xerrors.Errorf("failed assuming role: %w", err)
 	}
 
-	return session.NewSession(&aws.Config{
+	newSess, err := session.NewSession(&aws.Config{
 		Credentials: credentials.NewStaticCredentials(
 			*assumedRole.Credentials.AccessKeyId,
 			*assumedRole.Credentials.SecretAccessKey,
@@ -81,4 +81,10 @@ func AssumeRole(sess *session.Session, config AssumeRoleConfig) (*session.Sessio
 		),
 		Region: sess.Config.Region,
 	})
+
+	if err != nil {
+		return nil, nil, xerrors.Errorf("initializing session with assume role: %w", err)
+	}
+
+	return newSess, assumedRole.Credentials, nil
 }

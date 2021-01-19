@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 )
 
 func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
@@ -19,6 +18,8 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	}
 
 	cluster, clusterConfig := set.Cluster, set.ClusterConfig
+
+	ctx := mustNewContext(cluster)
 
 	updateBy := func(args []string, harmlessErrors []string) func() error {
 		return func() error {
@@ -32,7 +33,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
-			if r, err := resource.Run(cmd); err != nil {
+			if r, err := ctx.Run(cmd); err != nil {
 				lines := strings.Split(err.Error(), "\n")
 				lastLine := lines[len(lines)-1]
 				if lastLine == "" && len(lines) > 1 {
@@ -71,7 +72,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
-			if err := resource.Update(cmd, d); err != nil {
+			if err := ctx.Update(cmd, d); err != nil {
 				lines := strings.Split(err.Error(), "\n")
 				lastLine := lines[len(lines)-1]
 				if lastLine == "" && len(lines) > 1 {
@@ -104,7 +105,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
-			if err := resource.Update(cmd, d); err != nil {
+			if err := ctx.Update(cmd, d); err != nil {
 				lines := strings.Split(err.Error(), "\n")
 				lastLine := lines[len(lines)-1]
 				if lastLine == "" && len(lines) > 1 {
@@ -135,7 +136,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 			}
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
-			if err := resource.Update(cmd, d); err != nil {
+			if err := ctx.Update(cmd, d); err != nil {
 				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
 			}
 
@@ -145,7 +146,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 
 	applyKubernetesManifests := func(id string) func() error {
 		return func() error {
-			return doApplyKubernetesManifests(cluster, id)
+			return doApplyKubernetesManifests(ctx, cluster, id)
 		}
 	}
 
@@ -163,7 +164,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 			}
 			cmd.Stdin = bytes.NewReader(clusterConfig)
 
-			if err := resource.Update(cmd, d); err != nil {
+			if err := ctx.Update(cmd, d); err != nil {
 				return fmt.Errorf("%v\n\nCLUSTER CONFIG:\n%s", err, string(clusterConfig))
 			}
 
@@ -173,19 +174,19 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 
 	checkPodsReadiness := func(id string) func() error {
 		return func() error {
-			return doCheckPodsReadiness(cluster, id)
+			return doCheckPodsReadiness(ctx, cluster, id)
 		}
 	}
 
 	writeKubeconfig := func() func() error {
 		return func() error {
-			return doWriteKubeconfig(d, string(set.ClusterName), cluster.Region)
+			return doWriteKubeconfig(ctx, d, string(set.ClusterName), cluster.Region)
 		}
 	}
 
 	attachNodeGroupsToTargetGroups := func() func() error {
 		return func() error {
-			return doAttachAutoScalingGroupsToTargetGroups(set)
+			return doAttachAutoScalingGroupsToTargetGroups(ctx, set)
 		}
 	}
 
@@ -221,7 +222,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 					return fmt.Errorf("creating eksctl drain command: %w", err)
 				}
 
-				if err := resource.Update(cmd, d); err != nil {
+				if err := ctx.Update(cmd, d); err != nil {
 					return fmt.Errorf("Drain Error: %v", err)
 				}
 			}
@@ -249,11 +250,11 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 			d.HasChange(KeyIAMIdentityMapping)
 			a, b := d.GetChange(KeyIAMIdentityMapping)
 
-			if err := runCreateIAMIdentityMapping(d, b.(*schema.Set).Difference(a.(*schema.Set)), cluster); err != nil {
+			if err := runCreateIAMIdentityMapping(ctx, d, b.(*schema.Set).Difference(a.(*schema.Set)), cluster); err != nil {
 				return fmt.Errorf("CreateIAMIdentityMapping Error: %v", err)
 			}
 
-			if err := runDeleteIAMIdentityMapping(d, a.(*schema.Set).Difference(b.(*schema.Set)), cluster); err != nil {
+			if err := runDeleteIAMIdentityMapping(ctx, d, a.(*schema.Set).Difference(b.(*schema.Set)), cluster); err != nil {
 				return fmt.Errorf("DeleteIAMIdentityMapping Error: %v", err)
 			}
 

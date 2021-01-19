@@ -1,7 +1,7 @@
 package cluster
 
 import (
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"golang.org/x/xerrors"
 	"io/ioutil"
 	"log"
@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func doDeleteKubernetesResourcesBeforeDestroy(cluster *Cluster, id string) error {
+func doDeleteKubernetesResourcesBeforeDestroy(ctx *sdk.Context, cluster *Cluster, id string) error {
 	if len(cluster.DeleteKubernetesResourcesBeforeDestroy) == 0 {
 		return nil
 	}
@@ -33,7 +33,7 @@ func doDeleteKubernetesResourcesBeforeDestroy(cluster *Cluster, id string) error
 		return xerrors.Errorf("initializing eksctl-utils-write-kubeconfig: %w", err)
 	}
 
-	if _, err := resource.Run(writeKubeconfigCmd); err != nil {
+	if _, err := ctx.Run(writeKubeconfigCmd); err != nil {
 		return xerrors.Errorf("running eksctl-utils-write-kubeconfig: %w", err)
 	}
 
@@ -48,7 +48,7 @@ func doDeleteKubernetesResourcesBeforeDestroy(cluster *Cluster, id string) error
 
 		kubectlCmd.Env = append(kubectlCmd.Env, "KUBECONFIG="+kubeconfigPath)
 
-		if _, err := resource.Run(kubectlCmd); err != nil {
+		if _, err := ctx.Run(kubectlCmd); err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				log.Printf("Ignoring `kubectl delete` error %w. %s/%s/%s seems already deleted. Perhaps it is a stale cluster that was in the middle of deletion process?", err, d.Namespace, d.Kind, d.Name)
 				continue

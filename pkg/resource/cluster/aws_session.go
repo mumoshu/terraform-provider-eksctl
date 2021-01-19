@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 )
 
@@ -12,10 +13,25 @@ func AWSSessionFromCluster(cluster *Cluster) *session.Session {
 		return sess
 	}
 
-	newSess, err := awsclicompat.AssumeRole(sess, *cluster.AssumeRoleConfig)
+	newSess, _, err := awsclicompat.AssumeRole(sess, *cluster.AssumeRoleConfig)
 	if err != nil {
 		panic(err)
 	}
 
 	return newSess
+}
+
+func AWSCredsFromConfig(region, profile string, assumeRole *awsclicompat.AssumeRoleConfig) (*session.Session, *sts.Credentials) {
+	sess := awsclicompat.NewSession(region, profile)
+
+	if assumeRole == nil {
+		return sess, nil
+	}
+
+	assumed, creds, err := awsclicompat.AssumeRole(sess, *assumeRole)
+	if err != nil {
+		panic(err)
+	}
+
+	return assumed, creds
 }

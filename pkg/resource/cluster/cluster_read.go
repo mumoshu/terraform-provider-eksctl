@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 )
 
 type ReadWrite interface {
@@ -51,6 +50,8 @@ func (d *DiffReadWrite) Id() string {
 func (m *Manager) readCluster(d ReadWrite) (*Cluster, error) {
 	cluster, err := m.readClusterInternal(d)
 
+	ctx := mustNewContext(cluster)
+
 	if err != nil {
 		return nil, fmt.Errorf("reading cluster: %w", err)
 	}
@@ -68,12 +69,13 @@ func (m *Manager) readCluster(d ReadWrite) (*Cluster, error) {
 	if path != "" {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			log.Printf("running customdiff: no kubeconfig file found at kubeconfig_path=%s: recreating it", path)
-			if err := doWriteKubeconfig(d, string(m.getClusterName(cluster, d.Id())), cluster.Region); err != nil {
+			if err := doWriteKubeconfig(nil, d, string(m.getClusterName(cluster, d.Id())), cluster.Region); err != nil {
 				return nil, fmt.Errorf("writing missing kubeconfig on plan: %w", err)
 			}
 		}
 	}
-	if err := readIAMIdentityMapping(d, cluster); err != nil {
+
+	if err := readIAMIdentityMapping(ctx, d, cluster); err != nil {
 		return nil, fmt.Errorf("reading aws-auth via eksctl get iamidentitymaping: %w", err)
 	}
 
@@ -121,7 +123,7 @@ func (m *Manager) planCluster(d *DiffReadWrite) error {
 	return nil
 }
 
-func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
+func readIAMIdentityMapping(ctx *sdk.Context, d ReadWrite, cluster *Cluster) error {
 	iamWithOIDCEnabled, err := cluster.IAMWithOIDCEnabled()
 	if err != nil {
 		return fmt.Errorf("reading iam.withOIDC setting from cluster.yaml: %w", err)
@@ -129,7 +131,7 @@ func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 		return nil
 	}
 
-	iams, err := runGetIAMIdentityMapping(d, cluster)
+	iams, err := runGetIAMIdentityMapping(ctx, d, cluster)
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)
 	}
@@ -153,8 +155,7 @@ func readIAMIdentityMapping(d ReadWrite, cluster *Cluster) error {
 	return nil
 }
 
-func runGetIAMIdentityMapping(d api.Getter, cluster *Cluster) ([]map[string]interface{}, error) {
-
+func runGetIAMIdentityMapping(ctx *sdk.Context, d api.Getter, cluster *Cluster) ([]map[string]interface{}, error) {
 	//get iamidentitymapping
 	args := []string{
 		"get",
@@ -170,7 +171,7 @@ func runGetIAMIdentityMapping(d api.Getter, cluster *Cluster) ([]map[string]inte
 		return nil, fmt.Errorf("creating get imaidentitymapping command: %w", err)
 	}
 
-	iamJson, err := resource.Run(cmd)
+	iamJson, err := ctx.Run(cmd)
 
 	if err != nil {
 		return nil, fmt.Errorf("running get iamidentitymapping : %w", err)
@@ -268,7 +269,9 @@ func runGetCluster(d api.Getter, cluster *Cluster) (*ClusterState, error) {
 		return nil, fmt.Errorf("creating get imaidentitymapping command: %w", err)
 	}
 
-	run, err := resource.Run(cmd)
+	ctx := mustNewContext(cluster)
+
+	run, err := ctx.Run(cmd)
 	if err != nil {
 		return nil, xerrors.Errorf("running get-cluster: %w", err)
 	}

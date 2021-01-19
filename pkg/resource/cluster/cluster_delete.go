@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"log"
 )
 
@@ -25,7 +24,9 @@ func (m *Manager) deleteCluster(d *schema.ResourceData) error {
 		"--wait",
 	}
 
-	if err := doDeleteKubernetesResourcesBeforeDestroy(cluster, d.Id()); err != nil {
+	ctx := mustNewContext(cluster)
+
+	if err := doDeleteKubernetesResourcesBeforeDestroy(ctx, cluster, d.Id()); err != nil {
 		return err
 	}
 
@@ -36,7 +37,7 @@ func (m *Manager) deleteCluster(d *schema.ResourceData) error {
 
 	cmd.Stdin = bytes.NewReader(set.ClusterConfig)
 
-	if err := resource.Delete(cmd, d); err != nil {
+	if err := ctx.Delete(cmd); err != nil {
 		return err
 	}
 
