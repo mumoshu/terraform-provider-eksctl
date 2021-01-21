@@ -69,7 +69,7 @@ func (m *Manager) readCluster(d ReadWrite) (*Cluster, error) {
 	if path != "" {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			log.Printf("running customdiff: no kubeconfig file found at kubeconfig_path=%s: recreating it", path)
-			if err := doWriteKubeconfig(nil, d, string(m.getClusterName(cluster, d.Id())), cluster.Region); err != nil {
+			if err := doWriteKubeconfig(ctx, d, string(m.getClusterName(cluster, d.Id())), cluster.Region); err != nil {
 				return nil, fmt.Errorf("writing missing kubeconfig on plan: %w", err)
 			}
 		}
