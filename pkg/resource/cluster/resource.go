@@ -109,13 +109,9 @@ func ResourceCluster() *schema.Resource {
 				}
 			}()
 
-			cluster, err := m.readCluster(d)
+			_, err := m.readCluster(d)
 			if err != nil {
 				return fmt.Errorf("reading cluster: %w", err)
-			}
-
-			if err := loadOIDCProviderURLAndARN(d, cluster); err != nil {
-				return fmt.Errorf("loading oidc issuer url: %w", err)
 			}
 
 			return nil
