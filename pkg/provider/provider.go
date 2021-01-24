@@ -6,7 +6,6 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/courier"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/iamserviceaccount"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 )
 
@@ -16,7 +15,7 @@ func Provider() terraform.ResourceProvider {
 	// The actual provider
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
-			sdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
+			tfsdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"eksctl_cluster":                cluster.ResourceCluster(),

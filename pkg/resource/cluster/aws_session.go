@@ -10,4 +10,3 @@ func AWSSessionFromCluster(cluster *Cluster) *session.Session {
 
 	return sess
 }
-

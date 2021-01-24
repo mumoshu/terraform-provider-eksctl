@@ -4,43 +4,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 	"os"
 )
-
-func GetAWSRegionAndProfile(d api.Getter) (string, string) {
-	var region string
-
-	if v := d.Get(KeyRegion); v != nil {
-		region = v.(string)
-	}
-
-	var profile string
-
-	if v := d.Get(KeyProfile); v != nil {
-		profile = v.(string)
-	}
-
-	return region, profile
-}
-
-func AWSSessionFromResourceData(d api.Getter) *session.Session {
-	region, profile := GetAWSRegionAndProfile(d)
-
-	sess := NewSession(region, profile)
-
-	assumeRoleConfig := GetAssumeRoleConfig(d)
-	if assumeRoleConfig == nil {
-		return sess
-	}
-
-	newSess, _, err := AssumeRole(sess, *assumeRoleConfig)
-	if err != nil {
-		panic(err)
-	}
-
-	return newSess
-}
 
 func AWSSession(region, profile string, assumeRoleConfig *AssumeRoleConfig) *session.Session {
 	sess := NewSession(region, profile)

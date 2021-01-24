@@ -1,4 +1,4 @@
-package sdk
+package tfsdk
 
 const (
 	KeyAssumeRole = "assume_role"

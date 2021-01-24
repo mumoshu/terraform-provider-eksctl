@@ -102,7 +102,7 @@ func Resource() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
-			sdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
+			tfsdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
 			sdk.KeyOutput: {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -131,7 +131,7 @@ func ReadIAMServiceAccount(d *schema.ResourceData) *IAMServiceAccount {
 	a.Cluster = d.Get(KeyCluster).(string)
 	a.AttachPolicyARN = d.Get(KeyAttachPolicyARN).(string)
 	a.OverrideExistingServiceAccounts = d.Get(KeyOverrideExistingServiceAccounts).(bool)
-	if cfg := sdk.GetAssumeRoleConfig(d); cfg != nil {
+	if cfg := tfsdk.GetAssumeRoleConfig(d); cfg != nil {
 		a.AssumeRoleConfig = cfg
 	}
 

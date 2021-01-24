@@ -45,7 +45,7 @@ func ResourceCluster() *schema.Resource {
 				}
 			}()
 
-			if err := m.planCluster(&DiffReadWrite{D: d}); err != nil {
+			if err := m.planCluster(&tfsdk.DiffReadWrite{D: d}); err != nil {
 				return fmt.Errorf("diffing cluster: %w", err)
 			}
 
@@ -142,7 +142,7 @@ func ResourceCluster() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
-			sdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
+			tfsdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
 			KeyName: {
 				Type:     schema.TypeString,
 				Required: true,

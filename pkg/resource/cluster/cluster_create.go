@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"io/ioutil"
 	"log"
 	"os"
@@ -13,7 +14,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	)
+)
 
 func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	id := newClusterID()
@@ -67,7 +68,7 @@ func (m *Manager) createCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	return set, nil
 }
 
-func (m *Manager) doPlanKubeconfig(d *DiffReadWrite) error {
+func (m *Manager) doPlanKubeconfig(d *tfsdk.DiffReadWrite) error {
 	var path string
 
 	if v := d.Get(KeyKubeconfigPath); v != nil {
@@ -81,7 +82,7 @@ func (m *Manager) doPlanKubeconfig(d *DiffReadWrite) error {
 	return nil
 }
 
-func doWriteKubeconfig(ctx *sdk.Context, d ReadWrite, clusterName, region string) error {
+func doWriteKubeconfig(ctx *sdk.Context, d api.ReadWrite, clusterName, region string) error {
 	var path string
 
 	if v := d.Get(KeyKubeconfigPath); v != nil {
@@ -141,7 +142,7 @@ func doWriteKubeconfig(ctx *sdk.Context, d ReadWrite, clusterName, region string
 	return nil
 }
 
-func createIAMIdentityMapping(ctx *sdk.Context, d ReadWrite, cluster *Cluster) error {
+func createIAMIdentityMapping(ctx *sdk.Context, d api.ReadWrite, cluster *Cluster) error {
 	iams, err := runGetIAMIdentityMapping(ctx, d, cluster)
 	if err != nil {
 		return fmt.Errorf("can not get iamidentitymapping from eks cluster: %w", err)

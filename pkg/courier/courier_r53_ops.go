@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/route53"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 	"log"
@@ -16,7 +16,7 @@ import (
 func CreateOrUpdateCourierRoute53Record(d api.Getter, mSchema *MetricSchema) error {
 	ctx := context.Background()
 
-	sess := sdk.AWSSessionFromResourceData(d)
+	sess := tfsdk.AWSSessionFromResourceData(d)
 
 	if v := d.Get("address"); v != nil {
 		sess.Config.Endpoint = aws.String(v.(string))
@@ -33,7 +33,7 @@ func CreateOrUpdateCourierRoute53Record(d api.Getter, mSchema *MetricSchema) err
 		return xerrors.Errorf("calling route53.GetHostedZone: %w", err)
 	}
 
-	region, profile := sdk.GetAWSRegionAndProfile(d)
+	region, profile := tfsdk.GetAWSRegionAndProfile(d)
 
 	recordName := d.Get("name").(string)
 
@@ -74,7 +74,7 @@ func CreateOrUpdateCourierRoute53Record(d api.Getter, mSchema *MetricSchema) err
 		stepWeight = v.(int)
 	}
 
-	assumeRoleConfig := sdk.GetAssumeRoleConfig(d)
+	assumeRoleConfig := tfsdk.GetAssumeRoleConfig(d)
 
 	r := &Route53RecordSetRouter{
 		Service:                   svc,

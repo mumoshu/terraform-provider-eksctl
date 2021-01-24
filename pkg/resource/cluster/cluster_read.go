@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"golang.org/x/xerrors"
 	"log"
 	"os"
@@ -15,39 +16,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
-type ReadWrite interface {
-	api.Getter
-
-	Id() string
-
-	Set(string, interface{}) error
-}
-
-type DiffReadWrite struct {
-	D *schema.ResourceDiff
-}
-
-func (d *DiffReadWrite) Get(k string) interface{} {
-	return d.D.Get(k)
-}
-
-func (d *DiffReadWrite) List(k string) []interface{} {
-	return nil
-}
-
-func (d *DiffReadWrite) Set(k string, v interface{}) error {
-	return d.D.SetNew(k, v)
-}
-
-func (d *DiffReadWrite) SetNewComputed(k string) error {
-	return d.D.SetNewComputed(k)
-}
-
-func (d *DiffReadWrite) Id() string {
-	return d.D.Id()
-}
-
-func (m *Manager) readCluster(d ReadWrite) (*Cluster, error) {
+func (m *Manager) readCluster(d api.ReadWrite) (*Cluster, error) {
 	cluster, err := m.readClusterInternal(d)
 
 	ctx := mustNewContext(cluster)
@@ -85,7 +54,7 @@ func (m *Manager) readCluster(d ReadWrite) (*Cluster, error) {
 func (m *Manager) readClusterInternal(d api.Resource) (*Cluster, error) {
 	clusterNamePrefix := d.Get("name").(string)
 
-	sess := sdk.AWSSessionFromResourceData(d)
+	sess := tfsdk.AWSSessionFromResourceData(d)
 
 	arns, err := getTargetGroupARNs(sess, clusterNamePrefix)
 	if err != nil {
@@ -110,7 +79,7 @@ func (m *Manager) readClusterInternal(d api.Resource) (*Cluster, error) {
 	return c, err
 }
 
-func (m *Manager) planCluster(d *DiffReadWrite) error {
+func (m *Manager) planCluster(d *tfsdk.DiffReadWrite) error {
 	_, err := m.readClusterInternal(d)
 	if err != nil {
 		return err
@@ -123,7 +92,7 @@ func (m *Manager) planCluster(d *DiffReadWrite) error {
 	return nil
 }
 
-func readIAMIdentityMapping(ctx *sdk.Context, d ReadWrite, cluster *Cluster) error {
+func readIAMIdentityMapping(ctx *sdk.Context, d api.ReadWrite, cluster *Cluster) error {
 	iamWithOIDCEnabled, err := cluster.IAMWithOIDCEnabled()
 	if err != nil {
 		return fmt.Errorf("reading iam.withOIDC setting from cluster.yaml: %w", err)
@@ -188,7 +157,7 @@ func runGetIAMIdentityMapping(ctx *sdk.Context, d api.Getter, cluster *Cluster) 
 	return iams, nil
 }
 
-func loadOIDCProviderURLAndARN(d ReadWrite, cluster *Cluster) error {
+func loadOIDCProviderURLAndARN(d api.ReadWrite, cluster *Cluster) error {
 	iamWithOIDCEnabled, err := cluster.IAMWithOIDCEnabled()
 	if err != nil {
 		return fmt.Errorf("reading iam.withOIDC setting from cluster.yaml: %w", err)

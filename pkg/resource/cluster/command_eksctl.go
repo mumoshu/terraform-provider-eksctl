@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"os/exec"
 )
 
@@ -11,12 +12,12 @@ func newEksctlCommandFromResourceWithRegionAndProfile(resource api.Getter, args 
 	eksctlBin := resource.Get(KeyBin).(string)
 	eksctlVersion := resource.Get(KeyEksctlVersion).(string)
 
-	bin, err := prepareEksctlBinaryInternal(eksctlBin, eksctlVersion)
+	bin, err := sdk.PrepareExecutable(eksctlBin, "eksctl", eksctlVersion)
 	if err != nil {
 		return nil, fmt.Errorf("preparing eksctl binary: %w", err)
 	}
 
-	region, profile := sdk.GetAWSRegionAndProfile(resource)
+	region, profile := tfsdk.GetAWSRegionAndProfile(resource)
 
 	if region != "" {
 		args = append(args, "--region", region)

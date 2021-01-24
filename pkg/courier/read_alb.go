@@ -2,8 +2,8 @@ package courier
 
 import (
 	"fmt"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"golang.org/x/xerrors"
 	"strconv"
 	"time"
@@ -28,14 +28,14 @@ type ALBSchema struct {
 }
 
 func ReadCourierALB(d api.Lister, schema *ALBSchema, metricSchema *MetricSchema) (*CourierALB, error) {
-	region, profile := sdk.GetAWSRegionAndProfile(d)
+	region, profile := tfsdk.GetAWSRegionAndProfile(d)
 
-	sess := sdk.AWSSessionFromResourceData(d)
+	sess := tfsdk.AWSSessionFromResourceData(d)
 
 	conf := CourierALB{
 		Region:           region,
 		Profile:          profile,
-		AssumeRoleConfig: sdk.GetAssumeRoleConfig(d),
+		AssumeRoleConfig: tfsdk.GetAssumeRoleConfig(d),
 		Session:          sess,
 	}
 

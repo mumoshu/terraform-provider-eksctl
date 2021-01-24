@@ -2,8 +2,8 @@ package cluster
 
 import (
 	"fmt"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 )
 
 func ReadCluster(d api.Getter) (*Cluster, error) {
@@ -81,7 +81,7 @@ func ReadCluster(d api.Getter) (*Cluster, error) {
 		}
 	}
 
-	if cfg := sdk.GetAssumeRoleConfig(d); cfg != nil {
+	if cfg := tfsdk.GetAssumeRoleConfig(d); cfg != nil {
 		a.AssumeRoleConfig = cfg
 	}
 

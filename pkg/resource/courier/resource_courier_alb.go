@@ -5,7 +5,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"github.com/rs/xid"
 	"golang.org/x/xerrors"
@@ -130,12 +129,12 @@ func ResourceALB() *schema.Resource {
 			return nil
 		},
 		Schema: map[string]*schema.Schema{
-			sdk.KeyRegion: {
+			tfsdk.KeyRegion: {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "",
 			},
-			sdk.KeyProfile: {
+			tfsdk.KeyProfile: {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "",
@@ -145,7 +144,7 @@ func ResourceALB() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
-			sdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
+			tfsdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
 			"listener_arn": {
 				Type:     schema.TypeString,
 				Required: true,
