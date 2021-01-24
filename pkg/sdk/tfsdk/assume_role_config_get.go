@@ -7,8 +7,10 @@ import (
 	"log"
 )
 
-func GetAssumeRoleConfig(d api.Getter) (config *sdk.AssumeRoleConfig) {
-	if l, ok := d.Get(KeyAssumeRole).([]interface{}); ok && len(l) > 0 && l[0] != nil {
+func GetAssumeRoleConfig(d api.Getter, opts ...SchemaOption) (config *sdk.AssumeRoleConfig) {
+	sc := CreateSchema(opts...)
+
+	if l, ok := d.Get(sc.KeyAWSAssumeRole).([]interface{}); ok && len(l) > 0 && l[0] != nil {
 		config = &sdk.AssumeRoleConfig{}
 
 		m := l[0].(map[string]interface{})

@@ -5,7 +5,7 @@ import (
 )
 
 func mustContext(a *IAMServiceAccount) *sdk.Context {
-	sess, creds := sdk.AWSCredsFromConfig(a.Region, a.Profile, a.AssumeRoleConfig)
+	sess, creds := sdk.AWSCredsFromValues(a.Region, a.Profile, a.AssumeRoleConfig)
 
 	return &sdk.Context{Sess: sess, Creds: creds}
 }

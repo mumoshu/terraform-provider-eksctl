@@ -5,7 +5,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 )
 
-func AWSCredsFromConfig(region, profile string, assumeRole *AssumeRoleConfig) (*session.Session, *sts.Credentials) {
+func AWSCredsFromConfig(conf *Config) (*session.Session, *sts.Credentials) {
+	return AWSCredsFromValues(conf.Region, conf.Profile, conf.AssumeRole)
+}
+
+func AWSCredsFromValues(region, profile string, assumeRole *AssumeRoleConfig) (*session.Session, *sts.Credentials) {
 	sess := NewSession(region, profile)
 
 	if assumeRole == nil {

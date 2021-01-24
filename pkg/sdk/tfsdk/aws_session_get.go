@@ -6,12 +6,12 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
 )
 
-func AWSSessionFromResourceData(d api.Getter) *session.Session {
-	region, profile := GetAWSRegionAndProfile(d)
+func AWSSessionFromResourceData(d api.Getter, opts ...SchemaOption) *session.Session {
+	region, profile := GetAWSRegionAndProfile(d, opts...)
 
 	sess := sdk.NewSession(region, profile)
 
-	assumeRoleConfig := GetAssumeRoleConfig(d)
+	assumeRoleConfig := GetAssumeRoleConfig(d, opts...)
 	if assumeRoleConfig == nil {
 		return sess
 	}

@@ -6,7 +6,7 @@ import (
 )
 
 func AWSSessionFromCluster(cluster *Cluster) *session.Session {
-	sess, _ := sdk.AWSCredsFromConfig(cluster.Region, cluster.Profile, cluster.AssumeRoleConfig)
+	sess, _ := sdk.AWSCredsFromValues(cluster.Region, cluster.Profile, cluster.AssumeRoleConfig)
 
 	return sess
 }

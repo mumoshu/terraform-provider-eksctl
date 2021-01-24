@@ -6,11 +6,11 @@ import (
 )
 
 type Job struct {
-	ContextConfigFunc func() (string, string, *AssumeRoleConfig)
+	Conf *Config
 }
 
-func NewJob(f func() (string, string, *AssumeRoleConfig)) *Job {
-	return &Job{ContextConfigFunc: f}
+func NewJob(conf *Config) *Job {
+	return &Job{Conf: conf}
 }
 
 func (s *Job) Task(name string, f func(*Context) error) (err error) {
@@ -35,9 +35,14 @@ func (s *Job) Task(name string, f func(*Context) error) (err error) {
 }
 
 func (s *Job) newContext() *Context {
-	region, profile, assumeRoleConfig := s.ContextConfigFunc()
+	return ContextConfig(s.Conf)
+}
 
-	sess, creds := AWSCredsFromConfig(region, profile, assumeRoleConfig)
+func ContextConfig(conf *Config) *Context {
+	sess, creds := AWSCredsFromConfig(conf)
 
-	return &Context{Sess: sess, Creds: creds}
+	return &Context{
+		Sess:  sess,
+		Creds: creds,
+	}
 }

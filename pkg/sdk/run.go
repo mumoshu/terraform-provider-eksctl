@@ -69,8 +69,8 @@ func Run(cmd *exec.Cmd) (*CommandResult, error) {
 			// so that helmfile could return its own exit code accordingly
 			waitStatus := ee.Sys().(syscall.WaitStatus)
 			exitStatus = waitStatus.ExitStatus()
-			if exitStatus != 0 {
-				return nil, fmt.Errorf("running %q: %v\n%s", cmdToLog, runErr, out)
+			if exitStatus != 2 {
+				return nil, fmt.Errorf("%s: %v\n%s", cmd.Path, runErr, out)
 			}
 		default:
 			return nil, fmt.Errorf("running %q: %v\n%s", cmdToLog, runErr, out)

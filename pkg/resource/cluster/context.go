@@ -5,7 +5,7 @@ import (
 )
 
 func mustNewContext(cluster *Cluster) *sdk.Context {
-	sess, creds := sdk.AWSCredsFromConfig(cluster.Region, cluster.Profile, cluster.AssumeRoleConfig)
+	sess, creds := sdk.AWSCredsFromValues(cluster.Region, cluster.Profile, cluster.AssumeRoleConfig)
 
 	return &sdk.Context{Sess: sess, Creds: creds}
 }
