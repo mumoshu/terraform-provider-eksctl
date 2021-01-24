@@ -6,7 +6,7 @@ TERRAFORM ?= terraform
 build: VER=0.0.1
 build:
 	mkdir -p .terraform/plugins/darwin_amd64
-	cd ../..; make build
+	cd ../..; make clean build
 	cp ../../dist/darwin_amd64/terraform-provider-eksctl $(WORKSPACE)/.terraform/plugins/darwin_amd64/
 	chmod +x $(WORKSPACE)/.terraform/plugins/darwin_amd64/terraform-provider-eksctl
 	cd $(HELMFILE_ROOT); make build
