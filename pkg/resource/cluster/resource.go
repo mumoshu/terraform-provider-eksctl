@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"log"
 	"regexp"
@@ -9,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"gopkg.in/yaml.v3"
 )
 
@@ -285,7 +285,7 @@ func ResourceCluster() *schema.Resource {
 					},
 				},
 			},
-			resource.KeyOutput: {
+			sdk.KeyOutput: {
 				Type:     schema.TypeString,
 				Computed: true,
 			},

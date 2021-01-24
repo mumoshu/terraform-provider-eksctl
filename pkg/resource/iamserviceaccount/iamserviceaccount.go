@@ -3,7 +3,6 @@ package iamserviceaccount
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"os/exec"
@@ -105,7 +104,7 @@ func Resource() *schema.Resource {
 				ForceNew: true,
 			},
 			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
-			resource.KeyOutput: {
+			sdk.KeyOutput: {
 				Type:     schema.TypeString,
 				Computed: true,
 			},

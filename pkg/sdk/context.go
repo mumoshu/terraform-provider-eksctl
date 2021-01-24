@@ -4,7 +4,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource"
 	"os"
 	"os/exec"
 	"strings"
@@ -15,10 +14,10 @@ type Context struct {
 	Sess  *session.Session
 }
 
-func (e *Context) Run(cmd *exec.Cmd) (*resource.CommandResult, error) {
+func (e *Context) Run(cmd *exec.Cmd) (*CommandResult, error) {
 	e.setEnv(cmd)
 
-	return resource.Run(cmd)
+	return Run(cmd)
 }
 
 func (e *Context) setEnv(cmd *exec.Cmd) {
@@ -53,7 +52,7 @@ func (e *Context) Update(cmd *exec.Cmd, d *schema.ResourceData) error {
 		return err
 	}
 
-	resource.SetOutput(d, st.Output)
+	SetOutput(d, st.Output)
 
 	return nil
 }
@@ -75,7 +74,7 @@ func (e *Context) Create(cmd *exec.Cmd, d *schema.ResourceData, id string) error
 		return err
 	}
 
-	resource.SetOutput(d, st.Output)
+	SetOutput(d, st.Output)
 
 	return nil
 }
