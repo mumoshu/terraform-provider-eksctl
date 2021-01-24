@@ -16,39 +16,6 @@ import (
 	"syscall"
 )
 
-func Create(cmd *exec.Cmd, d *schema.ResourceData, newID string) error {
-	d.MarkNewResource()
-
-	st, err := Run(cmd)
-	if err != nil {
-		return err
-	}
-
-	SetOutput(d, st.Output)
-
-	return nil
-}
-
-func Update(cmd *exec.Cmd, d *schema.ResourceData) error {
-	st, err := Run(cmd)
-	if err != nil {
-		return err
-	}
-
-	SetOutput(d, st.Output)
-
-	return nil
-}
-
-func Delete(cmd *exec.Cmd, d *schema.ResourceData) error {
-	_, err := Run(cmd)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func Run(cmd *exec.Cmd) (*CommandResult, error) {
 	const maxBufSize = 8 * 1024
 
