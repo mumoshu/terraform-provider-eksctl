@@ -216,7 +216,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 				if v == false {
 					opt = append(opt, "--undo")
 				}
-				cmd, err := newEksctlCommandWithAWSProfile(cluster, opt...)
+				cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, opt...)
 
 				if err != nil {
 					return fmt.Errorf("creating eksctl drain command: %w", err)
