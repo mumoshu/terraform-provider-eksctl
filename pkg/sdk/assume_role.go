@@ -1,4 +1,4 @@
-package awsclicompat
+package sdk
 
 import (
 	"fmt"

@@ -5,7 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elbv2"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"golang.org/x/xerrors"
 	"log"
 	"strconv"
@@ -24,7 +24,7 @@ type CourierALB struct {
 	StepInterval     time.Duration
 	Metrics          []Metric
 	Session          *session.Session
-	AssumeRoleConfig *awsclicompat.AssumeRoleConfig
+	AssumeRoleConfig *sdk.AssumeRoleConfig
 }
 
 type ALB struct {

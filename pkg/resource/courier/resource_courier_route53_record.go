@@ -5,6 +5,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/validation"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"github.com/rs/xid"
 )
@@ -42,12 +43,12 @@ func ResourceRoute53Record() *schema.Resource {
 			return nil
 		},
 		Schema: map[string]*schema.Schema{
-			"region": {
+			sdk.KeyRegion: {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "",
 			},
-			"profile": {
+			sdk.KeyProfile: {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "",
@@ -57,7 +58,7 @@ func ResourceRoute53Record() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
-			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
+			sdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
 			"zone_id": {
 				Type:     schema.TypeString,
 				Required: true,

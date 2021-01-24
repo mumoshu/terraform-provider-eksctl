@@ -142,7 +142,7 @@ func ResourceCluster() *schema.Resource {
 				Optional: true,
 				Default:  "",
 			},
-			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
+			sdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
 			KeyName: {
 				Type:     schema.TypeString,
 				Required: true,

@@ -2,7 +2,6 @@ package iamserviceaccount
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/awsclicompat"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"os/exec"
@@ -103,7 +102,7 @@ func Resource() *schema.Resource {
 				Required: true,
 				ForceNew: true,
 			},
-			tfsdk.KeyAssumeRole: tfsdk.AssumeRoleSchema(),
+			sdk.KeyAssumeRole: tfsdk.SchemaAssumeRole(),
 			sdk.KeyOutput: {
 				Type:     schema.TypeString,
 				Computed: true,
@@ -121,7 +120,7 @@ type IAMServiceAccount struct {
 	AttachPolicyARN                 string
 	OverrideExistingServiceAccounts bool
 	Output                          string
-	AssumeRoleConfig                *awsclicompat.AssumeRoleConfig
+	AssumeRoleConfig                *sdk.AssumeRoleConfig
 }
 
 func ReadIAMServiceAccount(d *schema.ResourceData) *IAMServiceAccount {

@@ -11,9 +11,7 @@ package tfsdk
 
 import "github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 
-const KeyAssumeRole = "assume_role"
-
-func AssumeRoleSchema() *schema.Schema {
+func SchemaAssumeRole() *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
 		Optional: true,
