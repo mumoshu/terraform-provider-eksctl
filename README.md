@@ -12,6 +12,7 @@ Benefits:
 Features:
 
 - Manage eksctl clusters using Terraform
+- [Support for AssumeRole and Cross-Account usage](#assume-role-and-cross-account)
 - [Install and upgrade eksctl version using Terraform](#declarative-binary-version-management)
 - [Cluster canary deployment using ALB](#cluster-canary-deployment-using-alb)
 - [Cluster canary deployment using Route 53 + NLB](#cluster-canary-deployment-using-route-53-and-nlb)
@@ -740,7 +741,8 @@ resource "eksctl_courier_route53_record" "www" {
 
 ## Advanced Features
 
-- Declarative biniary version management
+- [Declarative biniary version management](#declarative-binary-version-management)
+- [AssumeRole and Cross Account](#assumerole-and-cross-account)
 
 ### Declarative binary version management
 
@@ -758,6 +760,19 @@ This should be handy when you're trying to use this provider on Terraform Cloud,
 resource "eksctl_cluster" "mystack" {
   eksctl_version = "0.27.0"
 
+  // snip
+```
+
+### AssumeRole and Cross Account
+
+Providing the `assume_role` block, you can let the provider to call `sts:AssumeRole` for assuming an AWS role
+in the same account or another account before calling AWS API and running `eksctl` or `kubectl`.
+
+```hcl-terraform
+resource "eksctl_cluster" "red" {
+  assume_role {
+    role_arn = "arn:aws:iam::${var.account_id}:role/${var.role_name}"
+  }
   // snip
 ```
 

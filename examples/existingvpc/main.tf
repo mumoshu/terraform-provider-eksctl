@@ -1,6 +1,21 @@
 provider "eksctl" {}
 provider "helmfile" {}
 
+terraform {
+  required_providers {
+    eksctl = {
+      source = "mumoshu/eksctl"
+      version = "0.0.1"
+    }
+
+    helmfile = {
+      source = "mumoshu/helmfile"
+      version = "0.12.0"
+    }
+  }
+}
+
+
 variable "region" {
   default = "us-east-2"
   description = "AWS region"
@@ -198,9 +213,18 @@ nodeGroups:
 
 iam:
   withOIDC: true
-  serviceAccounts: []
+  serviceAccounts:
+  - metadata:
+      name: reader2
+      namespace: default
+      labels: {aws-usage: "application"}
+    attachPolicyARNs:
+    - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 
 vpc:
+  clusterEndpoints:
+    privateAccess: true
+    publicAccess: true
   cidr: "${module.vpc.vpc_cidr_block}"       # (optional, must match CIDR used by the given VPC)
   subnets:
     # must provide 'private' and/or 'public' subnets by availibility zone as shown
