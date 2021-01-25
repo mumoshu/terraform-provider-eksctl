@@ -59,6 +59,8 @@ func Run(cmd *exec.Cmd) (*CommandResult, error) {
 		//case <-ctx.Done():
 	}
 
+	res := NewCommandResult()
+
 	out := output.String()
 	log.Printf("[DEBUG] command %q finished with output: \"%s\"", cmdToLog, out)
 	var exitStatus int
@@ -72,12 +74,12 @@ func Run(cmd *exec.Cmd) (*CommandResult, error) {
 			if exitStatus != 2 {
 				return nil, fmt.Errorf("%s: %v\n%s", cmd.Path, runErr, out)
 			}
+			res.ExitStatus = exitStatus
 		default:
 			return nil, fmt.Errorf("running %q: %v\n%s", cmdToLog, runErr, out)
 		}
 	}
 
-	res := NewCommandResult()
 	res.Output = out
 
 	log.Printf("[DEBUG] command new state: \"%v\"", res)
@@ -134,7 +136,8 @@ func logDebug(title string, data interface{}) {
 
 // CommandResult is a wrapper around both the input and output attributes that are relavent for updates
 type CommandResult struct {
-	Output string
+	Output     string
+	ExitStatus int
 }
 
 // NewCommandResult is the constructor for CommandResult
