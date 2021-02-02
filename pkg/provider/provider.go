@@ -6,6 +6,7 @@ import (
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/cluster"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/courier"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/iamserviceaccount"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/resource/nodegroup"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 )
 
@@ -19,6 +20,7 @@ func Provider() terraform.ResourceProvider {
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"eksctl_cluster":                cluster.ResourceCluster(),
+			"eksctl_nodegroup":              nodegroup.Resource(),
 			"eksctl_iamserviceaccount":      iamserviceaccount.Resource(),
 			"eksctl_courier_alb":            courier.ResourceALB(),
 			"eksctl_courier_route53_record": courier.ResourceRoute53Record(),

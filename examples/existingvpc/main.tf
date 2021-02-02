@@ -1,5 +1,6 @@
 provider "eksctl" {}
 provider "helmfile" {}
+provider "kubectl" {}
 
 terraform {
   required_providers {
@@ -10,7 +11,12 @@ terraform {
 
     helmfile = {
       source = "mumoshu/helmfile"
-      version = "0.12.0"
+      version = "0.0.1"
+    }
+
+    kubectl = {
+      source = "mumoshu/kubectl"
+      version = "0.0.1"
     }
   }
 }
@@ -19,6 +25,9 @@ terraform {
 variable "region" {
   default = "us-east-2"
   description = "AWS region"
+}
+
+variable "role_arn" {
 }
 
 variable "myip" {
@@ -193,12 +202,16 @@ resource "aws_lb_target_group" "tg2" {
 }
 
 resource "eksctl_cluster" "red" {
-  eksctl_bin = "eksctl-dev"
-  name = "red"
-  region = "us-east-2"
+  assume_role {
+    role_arn = var.role_arn
+  }
+  eksctl_bin = "eksctl"
+  name = "red2"
+  region = var.region
   api_version = "eksctl.io/v1alpha5"
   version = "1.16"
   vpc_id = module.vpc.vpc_id
+  kubeconfig_path = "mykubeconfig"
   spec = <<EOS
 
 nodeGroups:
@@ -268,41 +281,79 @@ EOS
     module.vpc]
 }
 
-resource "eksctl_courier_alb" "my_alb_courier" {
-  listener_arn = aws_alb_listener.podinfo.arn
-
-  priority = "11"
-
-  step_weight = 10
-  step_interval = "5s"
-
-  hosts = [
-    "exmaple.com"]
-
-  destination {
-    target_group_arn = aws_lb_target_group.tg1.arn
-
-    weight = 100
+resource "eksctl_nodegroup" "ng1" {
+  assume_role {
+    role_arn = var.role_arn
   }
-
-  destination {
-    target_group_arn = aws_lb_target_group.tg2.arn
-    weight = 0
-  }
-
-  depends_on = [
-    eksctl_cluster.red,
-    helmfile_release_set.mystack1
-  ]
+  name = "ng1"
+  region = eksctl_cluster.red.region
+  cluster = eksctl_cluster.red.name
+  nodes_min = 1
+  nodes = 1
 }
+//
+//resource "eksctl_courier_alb" "my_alb_courier" {
+//  listener_arn = aws_alb_listener.podinfo.arn
+//
+//  priority = "11"
+//
+//  step_weight = 10
+//  step_interval = "5s"
+//
+//  hosts = [
+//    "exmaple.com"]
+//
+//  destination {
+//    target_group_arn = aws_lb_target_group.tg1.arn
+//
+//    weight = 100
+//  }
+//
+//  destination {
+//    target_group_arn = aws_lb_target_group.tg2.arn
+//    weight = 0
+//  }
+//
+//  depends_on = [
+//    eksctl_cluster.red,
+////    helmfile_release_set.mystack1
+//  ]
+//}
 
 resource "helmfile_release_set" "mystack1" {
+  aws_region = var.region
+  aws_assume_role {
+    role_arn = var.role_arn
+  }
   content = file("./helmfile.yaml")
   environment = "default"
   kubeconfig = eksctl_cluster.red.kubeconfig_path
   depends_on = [
     eksctl_cluster.red,
   ]
+}
+
+resource "kubectl_ensure" "meta" {
+  aws_region = var.region
+  aws_assume_role {
+    role_arn = var.role_arn
+  }
+
+  kubeconfig = eksctl_cluster.red.kubeconfig_path
+
+  namespace = "kube-system"
+  resource = "configmap"
+  name = "aws-auth"
+
+  labels = {
+    "key1" = "one"
+    "key2" = "two"
+  }
+
+  annotations = {
+    "key3" = "three"
+    "key4" = "four"
+  }
 }
 
 output "kubeconfig_path" {
@@ -344,20 +395,20 @@ output "vpc_cidr_block" {
 output "vpc_subnet_groups" {
   value = {
     "public" = [
-      for i in range(length(module.vpc.azs)):
-      {
-        cidr = module.vpc.public_subnets_cidr_blocks[i],
-        az = module.vpc.azs[i],
-        id = module.vpc.public_subnets[i],
-      }
+    for i in range(length(module.vpc.azs)):
+    {
+      cidr = module.vpc.public_subnets_cidr_blocks[i],
+      az = module.vpc.azs[i],
+      id = module.vpc.public_subnets[i],
+    }
     ],
     "private" = [
-        for i in range(length(module.vpc.azs)):
-        {
-          cidr = module.vpc.private_subnets_cidr_blocks[i],
-          az = module.vpc.azs[i],
-          id = module.vpc.private_subnets[i],
-        }
+    for i in range(length(module.vpc.azs)):
+    {
+      cidr = module.vpc.private_subnets_cidr_blocks[i],
+      az = module.vpc.azs[i],
+      id = module.vpc.private_subnets[i],
+    }
     ]
   }
 }
