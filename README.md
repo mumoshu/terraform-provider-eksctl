@@ -12,7 +12,7 @@ Benefits:
 Features:
 
 - Manage eksctl clusters using Terraform
-- [Add/remove nodegroups using Terraform](#add-and-remove-nodegroups)
+- [Add/remove nodegroups using Terraform](#add-and-remove-node-groups)
 - [Support for AssumeRole and Cross-Account usage](#assumerole-and-cross-account)
 - [Install and upgrade eksctl version using Terraform](#declarative-binary-version-management)
 - [Cluster canary deployment using ALB](#cluster-canary-deployment-using-alb)
