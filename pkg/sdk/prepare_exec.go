@@ -25,9 +25,9 @@ func PrepareExecutable(defaultPath, pkgAndCmdName, pkgVersion string) (*string, 
 
 	rig := "https://github.com/fishworks/fish-food"
 
-	installEksctl := pkgVersion != ""
+	doInstall := pkgVersion != ""
 
-	if installEksctl {
+	if doInstall {
 		log.Printf("Installing %s %s", pkgAndCmdName, pkgVersion)
 
 		conf.Dependencies = append(conf.Dependencies,

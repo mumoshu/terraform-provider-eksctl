@@ -12,7 +12,8 @@ Benefits:
 Features:
 
 - Manage eksctl clusters using Terraform
-- [Support for AssumeRole and Cross-Account usage](#assume-role-and-cross-account)
+- [Add/remove nodegroups using Terraform](#add-and-remove-nodegroups)
+- [Support for AssumeRole and Cross-Account usage](#assumerole-and-cross-account)
 - [Install and upgrade eksctl version using Terraform](#declarative-binary-version-management)
 - [Cluster canary deployment using ALB](#cluster-canary-deployment-using-alb)
 - [Cluster canary deployment using Route 53 + NLB](#cluster-canary-deployment-using-route-53-and-nlb)
@@ -762,6 +763,48 @@ resource "eksctl_cluster" "mystack" {
 
   // snip
 ```
+
+### Add and remove Node Groups
+
+In addition to declaring nodegroups in `eksctl_cluster`'s `spec,` you can add
+one or more nodegroups by using `eksctl_nodegroup`:
+
+```hcl-terraform
+resource "eksctl_cluster" "red" {
+  name = "red1"
+  region = "us-east-2"
+  api_version = "eksctl.io/v1alpha5"
+  version = "1.16"
+  vpc_id = module.vpc.vpc_id
+  spec = <<-EOS
+  nodeGroups:
+  - name: ng1
+    instanceType: m5.large
+    desiredCapacity: 1
+    targetGroupARNs:
+    - ${aws_lb_target_group.green.arn}
+  EOS
+}
+
+resource "eksctl_nodegroup" "ng2" {
+  assume_role {
+    role_arn = var.role_arn
+  }
+  name = "ng1"
+  region = eksctl_cluster.red.region
+  cluster = eksctl_cluster.red.name
+  nodes_min = 1
+  nodes = 1
+  # And all the `eksctl-create-nodegroup` flags are available as their `snake_case` form.
+  # See `eksctl create nodegroup -h` and
+  # https://github.com/mumoshu/terraform-provider-eksctl/pull/34/files#diff-d490f9a73df8d38ad25b7d26bf1152d178c08df0980f55b3c86fc6991b2b9839R165-R202
+  # for the full list.
+  # For example, `--install-nvidia-plugin` can be spciefied as `install_nvidia_driver = true`.
+}
+```
+
+It's almost a matter of preference whether to use, but generally `eksctl_nodegroup` is faster to `apply` as it involves
+fewer AWS API calls. 
 
 ### AssumeRole and Cross Account
 
