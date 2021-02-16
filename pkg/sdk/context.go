@@ -1,12 +1,13 @@
 package sdk
 
 import (
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
 
 type Context struct {
@@ -25,10 +26,10 @@ func (e *Context) setEnv(cmd *exec.Cmd) {
 
 	if len(cmd.Env) == 0 {
 		for _, kv := range os.Environ() {
-			if !strings.HasPrefix(kv, "KUBECONFIG=") &&
+			if e.Creds == nil || (!strings.HasPrefix(kv, "KUBECONFIG=") &&
 				!strings.HasPrefix(kv, "AWS_SESSION_TOKEN=") &&
 				!strings.HasPrefix(kv, "AWS_SECRET_ACCESS_KEY=") &&
-				!strings.HasPrefix(kv, "AWS_ACCESS_KEY_ID=") {
+				!strings.HasPrefix(kv, "AWS_ACCESS_KEY_ID=")) {
 
 				env = append(env, kv)
 			}
