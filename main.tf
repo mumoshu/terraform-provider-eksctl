@@ -13,6 +13,7 @@ resource "null_resource" "eksctl" {
 
   
 resource "eksctl_cluster" "primary" {
+  depends_on = [null_resource.eksctl]
   name = "subs"
   region = "us-east-1"
   spec = <<EOS
