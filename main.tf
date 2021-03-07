@@ -6,7 +6,7 @@ resource "null_resource" "eksctl" {
   }
 
   provisioner "local-exec" {
-    command = "/usr/bin/wget https://eksctl84.s3.amazonaws.com/eksctl -O /tmp/eksctl && /bin/chmod +x /tmp/eksctl && echo $PATH"
+    command = "/usr/bin/wget https://eksctl84.s3.amazonaws.com/eksctl -O /tmp/eksctl && /bin/chmod +x /tmp/eksctl && PATH=$PATH:/tmp && echo $PATH"
     }
 
 ########################################################
