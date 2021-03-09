@@ -195,9 +195,10 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 	clusterName := string(set.ClusterName)
 	harmlessFargateProfileCreationErrors := []string{
 		fmt.Sprintf(`Error: no output "FargatePodExecutionRoleARN" in stack "eksctl-%s-cluster"`, clusterName),
+		fmt.Sprintf(`Error: couldn't refresh role arn: no output "FargatePodExecutionRoleARN" in stack "eksctl-%s-cluster"`, clusterName),
 	}
 
-	draineNodegroup := func() func() error {
+	drainNodegroup := func() func() error {
 
 		return func() error {
 
@@ -273,7 +274,7 @@ func (m *Manager) updateCluster(d *schema.ResourceData) (*ClusterSet, error) {
 		whenIAMWithOIDCEnabled(createNew("iamserviceaccount", []string{"--approve"}, nil)),
 		createNew("fargateprofile", nil, harmlessFargateProfileCreationErrors),
 		enableRepo(),
-		draineNodegroup(),
+		drainNodegroup(),
 		updateIAMIdentityMapping(),
 		deleteMissing("nodegroup", []string{"--drain", "--approve"}, nil),
 		whenIAMWithOIDCEnabled(deleteMissing("iamserviceaccount", []string{"--approve"}, nil)),
