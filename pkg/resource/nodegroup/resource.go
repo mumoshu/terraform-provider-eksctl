@@ -126,7 +126,7 @@ var Strings = Tpe{
 var StringMap = Tpe{
 	Type: schema.TypeMap,
 	Elem: &schema.Schema{
-		Type: schema.TypeBool,
+		Type: schema.TypeString,
 	},
 	Args: func(key, flag string, def interface{}, d api.Getter) (args []string) {
 		if m, ok := d.Get(key).(map[string]interface{}); ok && len(m) > 0 {
