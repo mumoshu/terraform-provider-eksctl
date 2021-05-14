@@ -3,14 +3,15 @@ package cluster
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
-	"golang.org/x/xerrors"
 	"log"
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
+	"golang.org/x/xerrors"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -137,7 +138,7 @@ func runGetIAMIdentityMapping(ctx *sdk.Context, d api.Getter, cluster *Cluster) 
 	cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, args...)
 
 	if err != nil {
-		return nil, fmt.Errorf("creating get imaidentitymapping command: %w", err)
+		return nil, fmt.Errorf("creating get iamidentitymapping command: %w", err)
 	}
 
 	iamJson, err := ctx.Run(cmd)
@@ -235,7 +236,7 @@ func runGetCluster(d api.Getter, cluster *Cluster) (*ClusterState, error) {
 	cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, args...)
 
 	if err != nil {
-		return nil, fmt.Errorf("creating get imaidentitymapping command: %w", err)
+		return nil, fmt.Errorf("creating get iamidentitymapping command: %w", err)
 	}
 
 	ctx := mustNewContext(cluster)

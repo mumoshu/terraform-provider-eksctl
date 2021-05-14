@@ -3,15 +3,16 @@ package cluster
 import (
 	"bytes"
 	"fmt"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/api"
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk/tfsdk"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 )
@@ -159,11 +160,11 @@ func createIAMIdentityMapping(ctx *sdk.Context, d api.ReadWrite, cluster *Cluste
 	if d.Get(KeyIAMIdentityMapping) != nil {
 		values := d.Get(KeyIAMIdentityMapping).(*schema.Set)
 		if err := runCreateIAMIdentityMapping(ctx, d, values, cluster); err != nil {
-			return fmt.Errorf("creating create  imaidentitymapping command: %w", err)
+			return fmt.Errorf("creating create  iamidentitymapping command: %w", err)
 		}
 
 		if err := d.Set(KeyIAMIdentityMapping, values); err != nil {
-			return fmt.Errorf("set  imaidentitymapping : %w", err)
+			return fmt.Errorf("set  iamidentitymapping : %w", err)
 		}
 	}
 
@@ -196,12 +197,12 @@ func runCreateIAMIdentityMapping(ctx *sdk.Context, d api.Getter, s *schema.Set, 
 		cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, args...)
 
 		if err != nil {
-			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
+			return fmt.Errorf("creating create iamidentitymapping command: %w", err)
 		}
 
 		res, err := ctx.Run(cmd)
 		if err != nil {
-			return fmt.Errorf("running create imaidentitymapping command: %w", err)
+			return fmt.Errorf("running create iamidentitymapping command: %w", err)
 		}
 
 		log.Printf("eksctl creat iamidentitymapping response: %v", res)
@@ -225,7 +226,7 @@ func runDeleteIAMIdentityMapping(ctx *sdk.Context, d api.Getter, s *schema.Set, 
 		cmd, err := newEksctlCommandFromResourceWithRegionAndProfile(d, args...)
 
 		if err != nil {
-			return fmt.Errorf("creating create imaidentitymapping command: %w", err)
+			return fmt.Errorf("creating create iamidentitymapping command: %w", err)
 		}
 
 		res, err := ctx.Run(cmd)
