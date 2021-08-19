@@ -28,6 +28,7 @@ func Resource() *schema.Resource {
 				"--cluster", a.Cluster,
 				"--name", a.Name,
 				"--namespace", a.Namespace,
+				"--region", a.Region,
 			}
 
 			if a.OverrideExistingServiceAccounts {
@@ -55,6 +56,7 @@ func Resource() *schema.Resource {
 				"--cluster", a.Cluster,
 				"--name", a.Name,
 				"--namespace", a.Namespace,
+				"--region", a.Region,
 			}
 
 			return ctx.Delete(exec.Command("eksctl", args...))
