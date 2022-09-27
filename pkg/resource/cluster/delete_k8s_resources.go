@@ -1,13 +1,14 @@
 package cluster
 
 import (
-	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
-	"golang.org/x/xerrors"
 	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
+	"golang.org/x/xerrors"
 )
 
 func doDeleteKubernetesResourcesBeforeDestroy(ctx *sdk.Context, cluster *Cluster, id string) error {
@@ -50,7 +51,7 @@ func doDeleteKubernetesResourcesBeforeDestroy(ctx *sdk.Context, cluster *Cluster
 
 		if _, err := ctx.Run(kubectlCmd); err != nil {
 			if strings.Contains(err.Error(), "not found") {
-				log.Printf("Ignoring `kubectl delete` error %w. %s/%s/%s seems already deleted. Perhaps it is a stale cluster that was in the middle of deletion process?", err, d.Namespace, d.Kind, d.Name)
+				log.Printf("Ignoring `kubectl delete` error %s. %s/%s/%s seems already deleted. Perhaps it is a stale cluster that was in the middle of deletion process?", err.Error(), d.Namespace, d.Kind, d.Name)
 				continue
 			}
 

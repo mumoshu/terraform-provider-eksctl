@@ -2,14 +2,15 @@ package courier
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/sdk"
 	"golang.org/x/xerrors"
-	"log"
-	"strconv"
-	"time"
 )
 
 type CourierALB struct {
@@ -65,7 +66,7 @@ func (a *ALB) Delete(d *CourierALB) error {
 				appendix = fmt.Sprintf("\nOUTPUT:\n%v", *res)
 			}
 
-			log.Printf("Error: deleting rule: %w\nINPUT:\n%v%s", err, *input, appendix)
+			log.Printf("Error: deleting rule: %s\nINPUT:\n%v%s", err.Error(), *input, appendix)
 
 			return fmt.Errorf("deleting rule: %w", err)
 		}

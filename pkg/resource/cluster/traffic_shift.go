@@ -2,14 +2,15 @@ package cluster
 
 import (
 	"context"
+	"log"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/aws/aws-sdk-go/service/elbv2/elbv2iface"
 	"github.com/mumoshu/terraform-provider-eksctl/pkg/courier"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
-	"log"
-	"sync"
-	"time"
 )
 
 func graduallyShiftTraffic(set *ClusterSet, opts courier.CanaryOpts) error {
@@ -106,7 +107,7 @@ func (m *ALBRouter) SwitchTargetGroup(listenerStatuses ListenerStatuses, opts co
 
 		return err
 	} else {
-		log.Printf("Traffic shifting canceled due to error: %w", err)
+		log.Printf("Traffic shifting canceled due to error: %s", err.Error())
 
 		return err
 	}
