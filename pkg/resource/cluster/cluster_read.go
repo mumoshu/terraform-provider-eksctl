@@ -69,7 +69,7 @@ func (m *Manager) readClusterInternal(d api.Resource) (*Cluster, error) {
 	}
 
 	if err := d.Set(KeyTargetGroupARNs, v); err != nil {
-		log.Printf("setting resource data value for key %v: %w", KeyTargetGroupARNs, err)
+		log.Printf("setting resource data value for key %v: %s", KeyTargetGroupARNs, err.Error())
 	}
 
 	c, err := ReadCluster(d)
