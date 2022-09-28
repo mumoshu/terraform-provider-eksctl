@@ -12,8 +12,8 @@ require (
 	github.com/mumoshu/shoal v0.2.18
 	github.com/rs/xid v1.2.1
 	github.com/stretchr/testify v1.5.1
-	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543
+	golang.org/x/sync v0.0.0-20220923202941-7f9b1623fab7
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2
 	gopkg.in/yaml.v3 v3.0.0-20200506231410-2ff61e1afc86
 )
 
@@ -96,7 +96,7 @@ require (
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9 // indirect
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45 // indirect
-	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f // indirect
+	golang.org/x/sys v0.0.0-20220927170352-d9d178bc13c6 // indirect
 	golang.org/x/text v0.3.3 // indirect
 	google.golang.org/api v0.9.0 // indirect
 	google.golang.org/appengine v1.6.1 // indirect
